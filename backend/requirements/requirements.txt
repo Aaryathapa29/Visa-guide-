@@ -8,3 +8,8 @@ pypdf
 python-dotenv
 openai
 tiktoken
+django
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
+django-jazzmin

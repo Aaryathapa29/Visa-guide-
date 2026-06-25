@@ -2,7 +2,9 @@ node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+\.venv/
 backend/.venv/
+backend/venv/
 backend/embeddings/
 backend/__pycache__/
 __pycache__/
@@ -20,3 +22,43 @@ venv/
 dist/
 build/
 .DS_Store
+
+# Local databases and dumps
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+
+# Secrets and credentials
+*.pem
+*.key
+*.crt
+*.cer
+*.pfx
+*.p12
+*.jks
+*.keystore
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+
+# Logs and runtime artifacts
+*.log
+logs/
+*.pid
+
+# Coverage and test outputs
+.coverage
+.coverage.*
+htmlcov/
+coverage/
+
+# IDE/editor metadata
+.idea/
+.vscode/
+*.suo
+*.user
+*.userossc
+*.sln.docstates
+Thumbs.db

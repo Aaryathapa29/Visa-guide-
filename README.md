@@ -1,30 +1,116 @@
 # Visa Guide
 
-This repository contains a Python backend and a React/Vite frontend for the Visa Guide project.
+Visa Guide is a role-based web application for visa aspirants and consultancies.
 
-## Project Layout
+The current implementation in this repository focuses on:
+- role-based signup and login
+- manual admin verification for consultancy accounts
+- role-based homepage redirection after login
+- logout back to the role selection page
 
-- `backend/` contains the FastAPI app, RAG helper, PDFs, and backend-only dependencies
-- `backend/requirements/requirements.txt` contains the Python packages needed for the backend
-- `frontend/` contains the React/Vite user interface
+## Tech Stack
 
-## Git Ignore Rules
+- Backend: Django + Django REST Framework + SimpleJWT
+- Frontend: React + Vite + TypeScript
+- Database: SQLite (`backend/db.sqlite3`)
 
-The repository ignores generated and machine-local files that should not be committed:
+## Project Structure
 
-- `frontend/node_modules/` and `node_modules/` for installed JavaScript dependencies
-- `frontend/dist/` and `frontend/.vite/` for frontend build output and Vite cache
-- `backend/.venv/` and `venv/` for local Python virtual environments
-- `backend/embeddings/` for the generated FAISS vector store
-- `__pycache__/`, `backend/__pycache__/`, and `*.pyc` for Python bytecode caches
-- `.pytest_cache/`, `.mypy_cache/`, and `.ruff_cache/` for tool caches
-- `.env`, `.env.*`, `backend/.env`, and `backend/.env.*` for local environment secrets
-- `.DS_Store` for macOS metadata files
+- `backend/`: Django backend project
+  - `backend/visa_backend/`: Django project settings and URLs
+  - `backend/authentication/`: custom user model, auth serializers/views, and admin verification actions
+  - `backend/requirements/requirements.txt`: backend Python dependencies
+- `frontend/`: React frontend
+  - `frontend/src/app/`: app screens and components
+  - `frontend/src/api.ts`: axios API client (`http://127.0.0.1:8000/api/`)
+- `backend/Model Inference/`: separate model-inference utilities (not required for auth flow)
 
-## Frontend
+## Authentication Flow
 
-The frontend app lives in [frontend/README.md](frontend/README.md).
+### 1. Signup
+- Aspirant signup creates a `student` user and marks it verified.
+- Consultancy signup creates a `consultancy` user with `is_verified=False`.
+- Consultancy signup requires `organisation_type` and `license_number`.
 
-## Backend Setup
+### 2. Consultancy Verification
+- Admin reviews consultancy accounts in Django Admin (`/admin/`).
+- Admin can approve/reject consultancies using actions in the User admin.
+- Consultancy login is blocked until `is_verified=True`.
 
-Install backend dependencies from [backend/requirements/requirements.txt](backend/requirements/requirements.txt).
+### 3. Login
+- Login uses email + password + selected role.
+- Backend returns JWT `access` and `refresh` tokens plus user role payload.
+- Frontend redirects users to:
+  - aspirant home for `student`
+  - consultancy home for `consultancy`
+
+### 4. Logout
+- Logout clears stored auth/session keys from local storage.
+- User is returned to the role-based selection/signup page.
+
+## API Endpoints (Auth)
+
+Base path: `/api/auth/`
+
+- `POST /register/`
+- `POST /login/`
+- `POST /login/refresh/`
+
+## Local Setup
+
+Use a single shared virtual environment at the repository root.
+
+### Backend (Django)
+
+1. Create and activate virtual environment:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Linux / macOS
+.venv\Scripts\Activate.ps1      # Windows PowerShell
+```
+
+2. Install backend dependencies:
+
+```bash
+pip install -r backend/requirements/requirements.txt
+```
+
+3. Apply migrations:
+
+```bash
+cd backend
+python manage.py migrate
+```
+
+4. (Optional) Create admin user:
+
+```bash
+python manage.py createsuperuser
+```
+
+5. Run backend server:
+
+```bash
+python manage.py runserver
+```
+
+Backend runs at `http://127.0.0.1:8000`.
+
+### Frontend (React)
+
+In a separate terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend runs at `http://localhost:5173`.
+
+## Notes
+
+- Frontend auth state is stored in local storage (`accessToken`, `refreshToken`, `authRole`, `authUser`).
+- CORS is configured for `http://localhost:5173` in Django settings.
+- The model-inference module is intentionally separate from auth and homepage routing.

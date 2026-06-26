@@ -1,0 +1,22 @@
+# docker-compose.yml
+# Spins up your OWN free LanguageTool grammar server at http://localhost:8010
+#
+# Run:
+#   docker compose up -d
+#
+# Test it directly:
+#   curl -X POST http://localhost:8010/v2/check \
+#     -d "text=He go to school every day." \
+#     -d "language=en-US"
+
+version: "3.8"
+services:
+  languagetool:
+    image: erikvl87/languagetool:latest
+    container_name: languagetool
+    ports:
+      - "8010:8010"
+    environment:
+      - Java_Xms=512m
+      - Java_Xmx=1g
+    restart: unless-stopped

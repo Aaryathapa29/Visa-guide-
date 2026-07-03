@@ -8,6 +8,8 @@ export type Screen =
   | "consultancy"
   | "aspirant-signin"
   | "consultancy-signin"
+  | "password-reset-request"
+  | "password-reset-confirm"
   | "aspirant-home"
   | "consultancy-home"
   | "consultancy-pending";

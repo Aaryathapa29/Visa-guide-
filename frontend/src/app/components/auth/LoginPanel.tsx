@@ -7,10 +7,11 @@ interface LoginPanelProps {
   role: "aspirant" | "consultancy";
   onBack: () => void;
   onSignUp: () => void;
+  onForgotPassword: () => void;
   onLoginSuccess?: (role: string) => void;
 }
 
-export default function LoginPanel({ role, onBack, onSignUp, onLoginSuccess }: LoginPanelProps) {
+export default function LoginPanel({ role, onBack, onSignUp, onForgotPassword, onLoginSuccess }: LoginPanelProps) {
   const [showPass, setShowPass] = useState(false);
   const [hovered, setHovered] = useState(false);
   const isAspirant = role === "aspirant";
@@ -113,13 +114,14 @@ export default function LoginPanel({ role, onBack, onSignUp, onLoginSuccess }: L
         />
 
         <div className="flex justify-end">
-          <a
-            href="#"
+          <button
+            type="button"
+            onClick={onForgotPassword}
             className="hover:underline"
             style={{ color: "#2563eb", fontSize: "0.78rem", fontWeight: 500 }}
           >
             Forgot password?
-          </a>
+          </button>
         </div>
 
         {/* Consultancy-only verification notice */}

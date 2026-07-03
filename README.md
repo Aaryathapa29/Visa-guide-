@@ -14,6 +14,22 @@ The current implementation in this repository focuses on:
 - Frontend: React + Vite + TypeScript
 - Database: SQLite (`backend/db.sqlite3`)
 
+## Environment Variables
+
+The backend reads sensitive values from environment variables loaded from `backend/.env`.
+
+Set these locally for development:
+
+- `SECRET_KEY`
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `POSTGRES_HOST`
+- `POSTGRES_PORT`
+- `RESEND_API_KEY`
+
+Keep `backend/.env` local only. It is ignored by git and should not be committed.
+
 ## Project Structure
 
 - `backend/`: Django backend project
@@ -97,6 +113,8 @@ python manage.py runserver
 
 Backend runs at `http://127.0.0.1:8000`.
 
+If you are using PostgreSQL locally, make sure the environment variables above are set before running Django.
+
 ### Frontend (React)
 
 In a separate terminal:
@@ -108,6 +126,14 @@ npm run dev
 ```
 
 Frontend runs at `http://localhost:5173`.
+
+From the repository root, you can also run:
+
+```bash
+npm run dev
+```
+
+This forwards to the Vite frontend in `frontend/`.
 
 ## Notes
 

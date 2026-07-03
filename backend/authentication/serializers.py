@@ -50,11 +50,16 @@
 #         )
 #         return user
 
-from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_decode
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import get_user_model
 
 from .models import User
+
+UserModel = get_user_model()
 
 class RegisterSerializer(serializers.ModelSerializer):
     # Explicitly include the new consultancy fields here
@@ -67,6 +72,15 @@ class RegisterSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'password': {'write_only': True}
         }
+
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError('An account with this email already exists.')
+        return value
+
+    def validate_password(self, value):
+        validate_password(value)
+        return value
 
     def create(self, validated_data):
         # Extract fields out of the validated submission data bundle
@@ -110,17 +124,19 @@ class LoginSerializer(serializers.Serializer):
         password = attrs.get('password')
         role = attrs.get('role')
 
-        try:
-            user = User.objects.get(email__iexact=email)
-        except User.DoesNotExist as exc:
-            raise serializers.ValidationError({'detail': 'Invalid email or password.'}) from exc
+        candidates = User.objects.filter(email__iexact=email, role=role)
 
-        authenticated_user = authenticate(username=user.username, password=password)
-        if authenticated_user is None:
+        if not candidates.exists():
             raise serializers.ValidationError({'detail': 'Invalid email or password.'})
 
-        if user.role != role:
-            raise serializers.ValidationError({'detail': 'Selected role does not match this account.'})
+        user = None
+        for candidate in candidates:
+            if candidate.check_password(password):
+                user = candidate
+                break
+
+        if user is None:
+            raise serializers.ValidationError({'detail': 'Invalid email or password.'})
 
         if role == 'consultancy' and not user.is_verified:
             raise serializers.ValidationError({'detail': 'Your consultancy account is pending admin verification.'})
@@ -138,3 +154,28 @@ class LoginSerializer(serializers.Serializer):
                 'is_verified': user.is_verified,
             },
         }
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    uidb64 = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        try:
+            uid = urlsafe_base64_decode(attrs['uidb64']).decode()
+            user = UserModel.objects.get(pk=uid)
+        except Exception as exc:
+            raise serializers.ValidationError({'detail': 'Invalid reset link.'}) from exc
+
+        if not default_token_generator.check_token(user, attrs['token']):
+            raise serializers.ValidationError({'detail': 'Invalid or expired reset token.'})
+
+        validate_password(attrs['new_password'], user=user)
+
+        attrs['user'] = user
+        return attrs

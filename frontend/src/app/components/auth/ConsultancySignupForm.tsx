@@ -15,11 +15,13 @@ export default function ConsultancySignupForm({
   onVerificationPending: () => void;
 }) {
   const [showPass, setShowPass] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Form states
   const [orgType, setOrgType] = useState("");
   const [orgEmail, setOrgEmail] = useState("");
   const [orgPassword, setOrgPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [licenseNumber, setLicenseNumber] = useState("");
   
   // Status states
@@ -31,6 +33,12 @@ export default function ConsultancySignupForm({
     e.preventDefault();
     setError("");
     setMessage("");
+
+    if (orgPassword !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -117,6 +125,18 @@ export default function ConsultancySignupForm({
           onChange={(e: any) => setOrgPassword(e.target.value)}
           required
           trailingToggle={{ show: showPass, onToggle: () => setShowPass((v) => !v) }}
+        />
+
+        <InputField
+          id="orgConfirmPassword"
+          label="Confirm Password"
+          type={showConfirm ? "text" : "password"}
+          placeholder="Repeat your password"
+          icon={<Lock className="w-4 h-4" />}
+          value={confirmPassword}
+          onChange={(e: any) => setConfirmPassword(e.target.value)}
+          required
+          trailingToggle={{ show: showConfirm, onToggle: () => setShowConfirm((v) => !v) }}
         />
 
         <InputField

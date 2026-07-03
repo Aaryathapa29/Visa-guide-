@@ -4,16 +4,24 @@ import RoleSelection from "./components/auth/RoleSelection";
 import AspirantSignupForm from "./components/auth/AspirantSignupForm";
 import ConsultancySignupForm from "./components/auth/ConsultancySignupForm";
 import LoginPanel from "./components/auth/LoginPanel";
+import PasswordResetRequestForm from "./components/auth/PasswordResetRequestForm";
+import PasswordResetConfirmForm from "./components/auth/PasswordResetConfirmForm";
 import SplitFormLayout from "./components/auth/SplitFormLayout";
 import VisaAspirantHome from "./components/VisaAspirantHome";
 import ConsultancyHome from "./components/ConsultancyHome";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("selection");
+  const [resetRole, setResetRole] = useState<"aspirant" | "consultancy">("aspirant");
+  const [resetUidb64, setResetUidb64] = useState("");
+  const [resetToken, setResetToken] = useState("");
 
   useEffect(() => {
     const savedToken = localStorage.getItem("accessToken");
     const savedRole = localStorage.getItem("authRole");
+    const searchParams = new URLSearchParams(window.location.search);
+    const uidb64 = searchParams.get("uidb64");
+    const token = searchParams.get("token");
 
     if (savedToken && savedRole === "student") {
       setScreen("aspirant-home");
@@ -21,6 +29,12 @@ export default function App() {
 
     if (savedToken && savedRole === "consultancy") {
       setScreen("consultancy-home");
+    }
+
+    if (uidb64 && token) {
+      setResetUidb64(uidb64);
+      setResetToken(token);
+      setScreen("password-reset-confirm");
     }
   }, []);
 
@@ -105,6 +119,10 @@ export default function App() {
             role="aspirant"
             onBack={() => setScreen("selection")}
             onSignUp={() => setScreen("aspirant")}
+            onForgotPassword={() => {
+              setResetRole("aspirant");
+              setScreen("password-reset-request");
+            }}
             onLoginSuccess={() => {
               localStorage.setItem("authRole", "student");
               setScreen("aspirant-home");
@@ -119,9 +137,36 @@ export default function App() {
             role="consultancy"
             onBack={() => setScreen("selection")}
             onSignUp={() => setScreen("consultancy")}
+            onForgotPassword={() => {
+              setResetRole("consultancy");
+              setScreen("password-reset-request");
+            }}
             onLoginSuccess={() => {
               localStorage.setItem("authRole", "consultancy");
               setScreen("consultancy-home");
+            }}
+          />
+        </SplitFormLayout>
+      )}
+
+      {screen === "password-reset-request" && (
+        <SplitFormLayout panelType={resetRole}>
+          <PasswordResetRequestForm
+            role={resetRole}
+            onBack={() => setScreen(resetRole === "aspirant" ? "aspirant-signin" : "consultancy-signin")}
+          />
+        </SplitFormLayout>
+      )}
+
+      {screen === "password-reset-confirm" && (
+        <SplitFormLayout panelType="aspirant">
+          <PasswordResetConfirmForm
+            initialUidb64={resetUidb64}
+            initialToken={resetToken}
+            onBack={() => setScreen("selection")}
+            onSuccess={() => {
+              window.history.replaceState({}, document.title, window.location.pathname);
+              setScreen("selection");
             }}
           />
         </SplitFormLayout>

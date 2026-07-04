@@ -6,6 +6,7 @@ import ConsultancyNavbar from "./consultancy/ConsultancyNavbar";
 import OnboardingWizard from "./consultancy/OnboardingWizard";
 import ConsultancyChatPanel from "./consultancy/ConsultancyChatPanel";
 import AspirantQueueTable from "./consultancy/AspirantQueueTable";
+import ConsultancyVisitNotificationsFeed from "./consultancy/ConsultancyVisitNotificationsFeed";
 
 const STATS = [
   { label: "Countries Offered", value: "0", icon: <Globe className="w-4 h-4" />, highlight: false },
@@ -96,6 +97,8 @@ export default function ConsultancyHome() {
 
         {/* Stats */}
         <StatsBar />
+
+        <ConsultancyVisitNotificationsFeed />
 
         {/* Tab panels */}
         {activeTab === "profile" && (

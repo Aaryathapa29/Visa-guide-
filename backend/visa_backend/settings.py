@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -86,14 +87,39 @@ WSGI_APPLICATION = 'visa_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+# MANUAL CHANGE REQUIRED:
+# Add these values to backend/.env before running migrate:
+# POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
+# Optional: POSTGRES_HOST, POSTGRES_PORT
+# If these are missing, Django will stop here instead of falling back to SQLite.
+#
+# MANUAL DATABASE STEP:
+# Create the PostgreSQL database yourself before running migrate.
+# The name in POSTGRES_DB must match the actual database name in Postgres.
+
+POSTGRES_DB = os.getenv('POSTGRES_DB')
+POSTGRES_USER = os.getenv('POSTGRES_USER')
+POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
+POSTGRES_HOST = os.getenv('POSTGRES_HOST', 'localhost')
+POSTGRES_PORT = os.getenv('POSTGRES_PORT', '5432')
+
+if not POSTGRES_DB or not POSTGRES_USER or not POSTGRES_PASSWORD:
+    raise ImproperlyConfigured(
+        'PostgreSQL is required. Manually set POSTGRES_DB, POSTGRES_USER, and POSTGRES_PASSWORD in backend/.env, and make sure the database already exists in Postgres.'
+    )
+
+# MANUAL CHANGE REQUIRED:
+# Keep this connection block pointed at your PostgreSQL server.
+# If you move Postgres to another host or port, update POSTGRES_HOST / POSTGRES_PORT in backend/.env.
+# If the connection fails with "database does not exist", create the database first or correct POSTGRES_DB.
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'visa_guide_db'),
-        'USER': os.getenv('POSTGRES_USER', 'postgres'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', ''),
-        'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
-        'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        'NAME': POSTGRES_DB,
+        'USER': POSTGRES_USER,
+        'PASSWORD': POSTGRES_PASSWORD,
+        'HOST': POSTGRES_HOST,
+        'PORT': POSTGRES_PORT,
     }
 }
 
@@ -104,9 +130,6 @@ DATABASES = {
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
     },
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
@@ -137,6 +160,9 @@ AUTH_USER_MODEL = 'authentication.User'
 # Allow your React frontend to connect
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
 ]
 
 # Local development email settings: print reset emails to the terminal.

@@ -12,11 +12,12 @@ The current implementation in this repository focuses on:
 
 - Backend: Django + Django REST Framework + SimpleJWT
 - Frontend: React + Vite + TypeScript
-- Database: SQLite (`backend/db.sqlite3`)
+- Database: PostgreSQL (`visa_guide_db`)
 
 ## Environment Variables
 
 The backend reads sensitive values from environment variables loaded from `backend/.env`.
+Keep secrets local. Do not commit `.env` files, API keys, database passwords, private keys, or database dumps.
 
 Set these locally for development:
 
@@ -27,6 +28,11 @@ Set these locally for development:
 - `POSTGRES_HOST`
 - `POSTGRES_PORT`
 - `RESEND_API_KEY`
+
+Recommended local files:
+
+- `backend/.env` for Django and PostgreSQL secrets
+- `frontend/.env.local` only if you need frontend-specific local variables
 
 Keep `backend/.env` local only. It is ignored by git and should not be committed.
 
@@ -46,7 +52,7 @@ Keep `backend/.env` local only. It is ignored by git and should not be committed
 ### 1. Signup
 - Aspirant signup creates a `student` user and marks it verified.
 - Consultancy signup creates a `consultancy` user with `is_verified=False`.
-- Consultancy signup requires `organisation_type` and `license_number`.
+- Consultancy signup requires `office_name` and `license_number`.
 
 ### 2. Consultancy Verification
 - Admin reviews consultancy accounts in Django Admin (`/admin/`).
@@ -114,6 +120,7 @@ python manage.py runserver
 Backend runs at `http://127.0.0.1:8000`.
 
 If you are using PostgreSQL locally, make sure the environment variables above are set before running Django.
+Do not check in `backend/.env`, `frontend/.env*`, database dumps, or private keys.
 
 ### Frontend (React)
 
@@ -138,5 +145,5 @@ This forwards to the Vite frontend in `frontend/`.
 ## Notes
 
 - Frontend auth state is stored in local storage (`accessToken`, `refreshToken`, `authRole`, `authUser`).
-- CORS is configured for `http://localhost:5173` in Django settings.
+- CORS is configured for the local Vite ports in Django settings.
 - The model-inference module is intentionally separate from auth and homepage routing.

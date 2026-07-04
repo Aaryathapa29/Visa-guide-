@@ -27,7 +27,7 @@ from rag import RAGEngine, detect_country
 load_dotenv()  # reads your .env file
 
 # ── Config ────────────────────────────────────────────────────────────────────
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql://postgres:password@localhost:5432/visa_chatbot"

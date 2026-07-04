@@ -9,6 +9,7 @@ import PasswordResetConfirmForm from "./components/auth/PasswordResetConfirmForm
 import SplitFormLayout from "./components/auth/SplitFormLayout";
 import VisaAspirantHome from "./components/VisaAspirantHome";
 import ConsultancyHome from "./components/ConsultancyHome";
+import ConsultancyProfilePage from "./components/aspirant/ConsultancyProfilePage";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("selection");
@@ -37,6 +38,12 @@ export default function App() {
       setScreen("password-reset-confirm");
     }
   }, []);
+
+  const consultancyProfileMatch = window.location.pathname.match(/^\/consultancies\/(\d+)\/?$/);
+
+  if (consultancyProfileMatch) {
+    return <ConsultancyProfilePage consultancyId={Number(consultancyProfileMatch[1])} />;
+  }
 
   if (screen === "aspirant-home") {
     return <VisaAspirantHome />;

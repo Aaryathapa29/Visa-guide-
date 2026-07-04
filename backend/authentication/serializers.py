@@ -31,22 +31,21 @@
 # class RegisterSerializer(serializers.ModelSerializer):
 #     class Meta:
 #         model = User
-#         fields = ('username', 'email', 'password', 'role', 'organisation_type', 'license_number')
+#         fields = ('username', 'email', 'password', 'role', 'license_number')
 #         extra_kwargs = {'password': {'write_only': True}}
-
+#
 #     def create(self, validated_data):
 #         # Extract the role to determine verification state
 #         role = validated_data.get('role', 'student')
-        
+#
 #         user = User.objects.create_user(
 #             username=validated_data['username'],
 #             email=validated_data['email'],
 #             password=validated_data['password'],
 #             role=role,
-#             organisation_type=validated_data.get('organisation_type', ''),
 #             license_number=validated_data.get('license_number', ''),
 #             # Automatically unverify consultancies so they must be reviewed
-#             is_verified=False if role == 'consultancy' else True 
+#             is_verified=False if role == 'consultancy' else True
 #         )
 #         return user
 
@@ -62,13 +61,12 @@ from .models import User
 UserModel = get_user_model()
 
 class RegisterSerializer(serializers.ModelSerializer):
-    # Explicitly include the new consultancy fields here
-    organisation_type = serializers.CharField(required=False, allow_blank=True)
     license_number = serializers.CharField(required=False, allow_blank=True)
+    office_name = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password', 'role', 'organisation_type', 'license_number')
+        fields = ('id', 'username', 'email', 'password', 'role', 'license_number', 'office_name')
         extra_kwargs = {
             'password': {'write_only': True}
         }
@@ -85,13 +83,17 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Extract fields out of the validated submission data bundle
         role = validated_data.get('role', 'student')
-        organisation_type = validated_data.get('organisation_type', '')
         license_number = validated_data.get('license_number', '')
+        office_name = validated_data.get('office_name', '')
 
-        if role == 'consultancy' and (not organisation_type or not license_number):
+        if role == 'consultancy' and not license_number:
             raise serializers.ValidationError({
-                'organisation_type': 'Organisation type is required for consultancy accounts.',
                 'license_number': 'License number is required for consultancy accounts.',
+            })
+
+        if role == 'consultancy' and not office_name:
+            raise serializers.ValidationError({
+                'office_name': 'Office name is required for consultancy accounts.',
             })
 
         # Create your custom user record using Django's standard manager method
@@ -100,8 +102,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data['email'],
             password=validated_data['password'],
             role=role,
-            organisation_type=organisation_type,
-            license_number=license_number
+            license_number=license_number,
+            office_name=office_name,
         )
 
         # Logic step: set verification status based on the chosen role

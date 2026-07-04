@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Mail, Lock, Shield, HelpCircle, Building2, ArrowLeft } from "lucide-react";
 import InputField from "../ui/InputField";
-import SelectField from "../ui/SelectField";
 import SubmitButton from "../ui/SubmitButton";
 import API from "../../../api";
 
@@ -18,7 +17,7 @@ export default function ConsultancySignupForm({
   const [showConfirm, setShowConfirm] = useState(false);
 
   // Form states
-  const [orgType, setOrgType] = useState("");
+  const [officeName, setOfficeName] = useState("");
   const [orgEmail, setOrgEmail] = useState("");
   const [orgPassword, setOrgPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -49,8 +48,8 @@ export default function ConsultancySignupForm({
         email: orgEmail,
         password: orgPassword,
         role: "consultancy",
-        organisation_type: orgType,       // Added to fix blank field error
-        license_number: licenseNumber,   // Added to fix blank field error
+        office_name: officeName,
+        license_number: licenseNumber,
       });
 
       if (response.status === 201) {
@@ -96,12 +95,14 @@ export default function ConsultancySignupForm({
         {message && <div className="p-3 text-sm text-green-700 bg-green-50 rounded-xl">{message}</div>}
         {error && <div className="p-3 text-sm text-red-700 bg-red-50 rounded-xl">{error}</div>}
 
-        <SelectField 
-          id="orgType" 
-          label="Organisation Type" 
-          value={orgType}
-          onChange={(e: any) => setOrgType(e.target.value)}
-          required 
+        <InputField
+          id="officeName"
+          label="Office Name"
+          placeholder="Enter your office or brand name"
+          icon={<Building2 className="w-4 h-4" />}
+          value={officeName}
+          onChange={(e: any) => setOfficeName(e.target.value)}
+          required
         />
 
         <InputField

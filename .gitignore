@@ -19,6 +19,13 @@ __pycache__/
 .env.*
 backend/.env
 backend/.env.*
+frontend/.env
+frontend/.env.*
+**/.env.local
+**/.env.development
+**/.env.development.local
+**/.env.production
+**/.env.production.local
 venv/
 dist/
 build/

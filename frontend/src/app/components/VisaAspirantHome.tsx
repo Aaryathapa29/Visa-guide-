@@ -8,8 +8,8 @@ import CountryBrowseGrid, { BrowseToggle } from "./aspirant/CountryBrowseGrid";
 import ConsultancyBrowseGrid from "./aspirant/ConsultancyBrowseGrid";
 import ConsultancyChatPanel from "./aspirant/ConsultancyChatPanel";
 import ChatbotModal from "./aspirant/ChatbotModal";
-import DocumentAnalysisCard from "./aspirant/DocumentAnalysisCard";
 import BookingModal from "./aspirant/BookingModal";
+import DocumentParser from "./DocumentParser/DocumentParser"; // ← NEW
 
 type Modal = "chat" | "docanalysis" | "booking" | null;
 
@@ -50,7 +50,6 @@ export default function VisaAspirantHome() {
               onClick={() => setModal("chat")}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90"
               style={{ background: "#eef2fb", color: DARK }}
-              aria-label="Open Visa Guide Assistant chatbot"
             >
               <Bot className="w-4 h-4" />
               Ask AI Assistant
@@ -59,7 +58,6 @@ export default function VisaAspirantHome() {
               onClick={() => setModal("booking")}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90"
               style={{ background: DARK, color: "#fff" }}
-              aria-label="Book a counselling session"
             >
               <CalendarDays className="w-4 h-4" />
               Book Session
@@ -67,16 +65,13 @@ export default function VisaAspirantHome() {
           </div>
         </div>
 
-        {/* Stats */}
         <StatsBar />
 
-        {/* Browse section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <h2 className="font-bold text-base" style={{ color: DARK }}>Explore</h2>
             <BrowseToggle view={browseView} onChange={setBrowseView} />
           </div>
-
           {browseView === "countries" ? (
             <CountryBrowseGrid view="countries" />
           ) : (
@@ -84,7 +79,6 @@ export default function VisaAspirantHome() {
           )}
         </div>
 
-        {/* Chat with consultancies */}
         <div className="space-y-4">
           <h2 className="font-bold text-base flex items-center gap-2" style={{ color: DARK }}>
             <MessageCircle className="w-5 h-5" style={{ color: ACCENT }} />
@@ -100,7 +94,7 @@ export default function VisaAspirantHome() {
               label: "Analyse Cover Letter",
               sub: "Get AI feedback instantly",
               icon: <FileSearch className="w-5 h-5" />,
-              onClick: () => setModal("docanalysis"),
+              onClick: () => setModal("docanalysis"), // ← opens document parser
             },
             {
               label: "Book Counselling",
@@ -141,15 +135,33 @@ export default function VisaAspirantHome() {
 
       {/* Modals */}
       {modal === "chat" && <ChatbotModal onClose={() => setModal(null)} />}
-      {modal === "docanalysis" && <DocumentAnalysisCard onClose={() => setModal(null)} />}
       {modal === "booking" && <BookingModal onClose={() => setModal(null)} />}
 
-      {/* Floating consultancy chat FAB */}
+      {/* ── Document Parser Modal ── */}
+      {modal === "docanalysis" && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4"
+          style={{ background: "rgba(0,0,0,0.6)" }}
+        >
+          <div className="relative w-full max-w-2xl my-8">
+            {/* Close button */}
+            <button
+              onClick={() => setModal(null)}
+              className="absolute -top-3 -right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shadow-lg"
+              style={{ background: "#fff", color: "#0d1b3e" }}
+            >
+              ✕
+            </button>
+            <DocumentParser onClose={() => setModal(null)} />
+          </div>
+        </div>
+      )}
+
+      {/* Floating FAB */}
       <button
         onClick={() => setModal(null)}
         className="fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95 z-30"
         style={{ background: ACCENT }}
-        aria-label="Chat with a consultancy"
       >
         <MessageCircle className="w-6 h-6 text-white" />
       </button>

@@ -15,7 +15,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.http import HttpResponse, JsonResponse
+from django.urls import include, path, re_path
 
 from authentication.views import (
     consultancy_signup,
@@ -24,7 +25,44 @@ from authentication.views import (
     log_consultancy_visit,
 )
 
+def home(request):
+    return JsonResponse({
+        'status': 'ok',
+        'message': 'Visa Guide API is running',
+    })
+
+
+def docs(request):
+    html = """
+    <html>
+      <body>
+        <h1>Visa Guide API Docs</h1>
+        <ul>
+          <li>GET /</li>
+          <li>POST /api/auth/login/</li>
+          <li>POST /api/signup/consultancy/</li>
+          <li>GET /api/consultancies/</li>
+          <li>POST /api/log-visit/</li>
+          <li>GET /api/notifications/</li>
+        </ul>
+      </body>
+    </html>
+    """
+    return HttpResponse(html)
+
+
+def orders(request):
+    return JsonResponse({
+        'status': 'ok',
+        'message': 'Orders endpoint is available',
+        'orders': [],
+    })
+
+
 urlpatterns = [
+    path('', home, name='home'),
+    re_path(r'^docs(?:/(?:GET|POST|PUT|DELETE|PATCH).*)?/?$', docs, name='docs'),
+    path('orders', orders, name='orders'),
     path('admin/', admin.site.urls),
     path('api/auth/', include('authentication.urls')), 
     path('api/signup/consultancy/', consultancy_signup, name='consultancy_signup'),

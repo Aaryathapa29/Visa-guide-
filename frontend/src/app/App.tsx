@@ -1,3 +1,4 @@
+import DocumentParser from "./components/DocumentParser/DocumentParser";
 import { useEffect, useState } from "react";
 import type { Screen } from "./components/ui/theme";
 import RoleSelection from "./components/auth/RoleSelection";

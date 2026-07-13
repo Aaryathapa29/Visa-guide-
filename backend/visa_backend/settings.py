@@ -87,41 +87,32 @@ WSGI_APPLICATION = 'visa_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# MANUAL CHANGE REQUIRED:
-# Add these values to backend/.env before running migrate:
-# POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
-# Optional: POSTGRES_HOST, POSTGRES_PORT
-# If these are missing, Django will stop here instead of falling back to SQLite.
-#
-# MANUAL DATABASE STEP:
-# Create the PostgreSQL database yourself before running migrate.
-# The name in POSTGRES_DB must match the actual database name in Postgres.
-
+# Use PostgreSQL when the required environment variables are present.
+# Otherwise fall back to SQLite for local development.
 POSTGRES_DB = os.getenv('POSTGRES_DB')
 POSTGRES_USER = os.getenv('POSTGRES_USER')
 POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
 POSTGRES_HOST = os.getenv('POSTGRES_HOST', 'localhost')
 POSTGRES_PORT = os.getenv('POSTGRES_PORT', '5432')
 
-if not POSTGRES_DB or not POSTGRES_USER or not POSTGRES_PASSWORD:
-    raise ImproperlyConfigured(
-        'PostgreSQL is required. Manually set POSTGRES_DB, POSTGRES_USER, and POSTGRES_PASSWORD in backend/.env, and make sure the database already exists in Postgres.'
-    )
-
-# MANUAL CHANGE REQUIRED:
-# Keep this connection block pointed at your PostgreSQL server.
-# If you move Postgres to another host or port, update POSTGRES_HOST / POSTGRES_PORT in backend/.env.
-# If the connection fails with "database does not exist", create the database first or correct POSTGRES_DB.
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': POSTGRES_DB,
-        'USER': POSTGRES_USER,
-        'PASSWORD': POSTGRES_PASSWORD,
-        'HOST': POSTGRES_HOST,
-        'PORT': POSTGRES_PORT,
+if POSTGRES_DB and POSTGRES_USER and POSTGRES_PASSWORD:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': POSTGRES_DB,
+            'USER': POSTGRES_USER,
+            'PASSWORD': POSTGRES_PASSWORD,
+            'HOST': POSTGRES_HOST,
+            'PORT': POSTGRES_PORT,
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -153,6 +144,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Use a larger default primary key type for new models.
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Tell Django to use your custom user model
 AUTH_USER_MODEL = 'authentication.User'

@@ -45,7 +45,10 @@ def analyse_with_spacy(text: str) -> dict:
         "token_count": len(tokens),
         "stop_word_ratio": round(stop_word_ratio, 2),
         "has_country_mention": "GPE" in entity_types or "NORP" in entity_types,
-        "has_money_mention": "MONEY" in entity_types,
+        "has_money_mention": "MONEY" in entity_types or any(
+                            keyword in text.lower() 
+             for keyword in ["bank statement", "bank balance", "funds", "nrs", "npr", "salary", "savings"]
+            ),
         "has_date_mention": "DATE" in entity_types,
         "has_organization": "ORG" in entity_types,
     }

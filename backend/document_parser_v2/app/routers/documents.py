@@ -19,14 +19,21 @@ MAX_FILE_SIZE_MB = 5
 
 
 def _score_and_grade(critical: int, major: int, minor: int) -> tuple[int, str]:
-    """Simple deterministic scoring — no AI needed for this part."""
-    score = 100 - (critical * 12) - (major * 6) - (minor * 2)
+    """Deterministic scoring with capped penalties so real documents
+    don't unfairly hit F just from minor/moderate grammar issues."""
+    # Cap each category so no single type can wipe out the whole score
+    critical_penalty = min(critical * 10, 40)  # max 40 points lost for critical
+    major_penalty = min(major * 5, 30)          # max 30 points lost for major
+    minor_penalty = min(minor * 2, 20)          # max 20 points lost for minor
+
+    score = 100 - critical_penalty - major_penalty - minor_penalty
     score = max(0, min(100, score))
-    if score >= 90:
+
+    if score >= 85:
         grade = "A"
-    elif score >= 75:
+    elif score >= 70:
         grade = "B"
-    elif score >= 60:
+    elif score >= 55:
         grade = "C"
     elif score >= 40:
         grade = "D"

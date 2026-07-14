@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Globe, Plus, X, ChevronDown, ChevronUp, Trash2, Check } from "lucide-react";
 import { ACCENT, DARK } from "../ui/theme";
+import API from "../../../api";
 
 const COUNTRY_OPTIONS = [
   "Canada", "United Kingdom", "Germany", "Australia", "France",
@@ -20,6 +21,21 @@ export default function OnboardingWizard() {
   const [profiles, setProfiles] = useState<CountryProfile[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+
+  useEffect(() => {
+    API.get("country-profiles/").then((response) => {
+      const saved = Array.isArray(response.data) ? response.data : [];
+      setProfiles(saved.map((profile: Omit<CountryProfile, "id" | "expanded"> & { id?: number }) => ({
+        id: profile.country,
+        country: profile.country,
+        documents: profile.documents || "",
+        instructions: profile.instructions || "",
+        expanded: false,
+      })));
+    }).catch(() => null);
+  }, []);
 
   const selected = profiles.map((p) => p.country);
   const filtered = COUNTRY_OPTIONS.filter(
@@ -45,6 +61,19 @@ export default function OnboardingWizard() {
 
   function toggleExpand(id: string) {
     setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, expanded: !p.expanded } : p)));
+  }
+
+  async function saveProfiles() {
+    setSaving(true);
+    setSaveMessage("");
+    try {
+      await API.put("country-profiles/", { profiles: profiles.map(({ country, documents, instructions }) => ({ country, documents, instructions })) });
+      setSaveMessage("Country profiles saved.");
+    } catch (error: any) {
+      setSaveMessage(error?.response?.data?.detail || "Unable to save country profiles.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -276,15 +305,18 @@ export default function OnboardingWizard() {
 
         {profiles.length > 0 && (
           <button
-            onClick={() => alert("Country profiles saved! (demo)")}
+          onClick={saveProfiles}
+          disabled={saving}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.99]"
             style={{ background: DARK, color: "#fff" }}
           >
             <Check className="w-4 h-4" />
-            Save Profiles
+            {saving ? "Saving…" : "Save Profiles"}
           </button>
         )}
       </div>
+
+      {saveMessage && <p className="text-sm" style={{ color: saveMessage.includes("saved") ? "#059669" : "#dc2626" }}>{saveMessage}</p>}
 
       {/* Empty nudge */}
       {profiles.length === 0 && (

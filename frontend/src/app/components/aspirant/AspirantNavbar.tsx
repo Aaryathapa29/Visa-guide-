@@ -1,98 +1,30 @@
-import { useState } from "react";
-import { Bot, CalendarDays, Bell, LogOut, FileSearch } from "lucide-react";
-import Wordmark from "../ui/Wordmark";
-import { ACCENT, DARK } from "../ui/theme";
-
-function NavBtn({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-150"
-      style={{
-        color: hovered ? "#fff" : "rgba(255,255,255,0.65)",
-        background: hovered ? "rgba(255,255,255,0.1)" : "transparent",
-      }}
-      aria-label={label}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
+import { Bell, LogOut, FileSearch, GraduationCap } from "lucide-react";
 
 export default function AspirantNavbar({
-  onOpenChat,
   onOpenDocAnalysis,
-  onOpenBooking,
   onLogout,
 }: {
-  onOpenChat: () => void;
   onOpenDocAnalysis: () => void;
-  onOpenBooking: () => void;
   onLogout: () => void;
 }) {
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 py-3"
-      style={{ background: DARK, borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+      className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b border-white/10 bg-[#0a1f44] px-5 text-white shadow-sm md:px-10 lg:px-16"
     >
-      <Wordmark />
+      <a href="/" className="flex shrink-0 items-center gap-2.5" aria-label="VisaGuide home">
+        <span className="grid h-9 w-9 place-items-center rounded-sm bg-[#f97316] text-white"><GraduationCap className="h-5 w-5" /></span>
+        <span className="aspirant-serif text-xl tracking-tight">Visa<span className="text-[#f97316]">Guide</span></span>
+      </a>
 
-      <nav className="flex items-center gap-1">
-        <NavBtn icon={<Bot className="w-4 h-4" />} label="Visa Guide Assistant" onClick={onOpenChat} />
-        <NavBtn
-          icon={<FileSearch className="w-4 h-4" />}
-          label="Document Analysis"
-          onClick={onOpenDocAnalysis}
-        />
+      <nav className="hidden items-center gap-1 text-sm md:flex">
+        <a href="/" className="rounded-sm px-3 py-2 font-medium text-white/75 transition-colors hover:text-[#f97316]">Home</a>
+        <a href="#explore" className="rounded-sm px-3 py-2 font-medium text-white/75 transition-colors hover:text-[#f97316]">Explore</a>
+        <button onClick={onOpenDocAnalysis} className="flex items-center gap-2 rounded-sm px-3 py-2 font-medium text-white/75 transition-colors hover:text-[#f97316]"><FileSearch className="h-4 w-4" />Document Parser</button>
       </nav>
 
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onOpenBooking}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-150 hover:opacity-90 active:scale-95"
-          style={{ background: ACCENT, color: "#fff" }}
-          aria-label="Book counselling session"
-        >
-          <CalendarDays className="w-4 h-4" />
-          Book Counselling
-        </button>
-
-        <button
-          className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
-          style={{ color: "rgba(255,255,255,0.6)" }}
-          aria-label="Notifications"
-        >
-          <Bell className="w-4 h-4" />
-        </button>
-
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs"
-          style={{ background: ACCENT, color: "#fff" }}
-          aria-label="Account"
-        >
-          A
-        </div>
-
-        <button
-          onClick={onLogout}
-          className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
-          style={{ color: "rgba(255,255,255,0.5)" }}
-          aria-label="Sign out"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
+      <div className="flex items-center gap-1">
+        <button className="relative grid h-10 w-10 place-items-center rounded-full text-white/80 transition-colors hover:bg-white/5 hover:text-[#f97316]" aria-label="Notifications"><Bell className="h-5 w-5" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#f97316]" /></button>
+        <button onClick={onLogout} className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-white/5 text-white/90 transition-colors hover:border-[#f97316] hover:text-[#f97316]" aria-label="Sign out"><LogOut className="h-5 w-5" /></button>
       </div>
     </header>
   );

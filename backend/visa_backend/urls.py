@@ -19,6 +19,7 @@ from django.urls import path, include
 
 from authentication.views import (
     consultancy_signup,
+    country_profiles,
     get_all_consultancies,
     get_consultancy_notifications,
     log_consultancy_visit,
@@ -29,6 +30,7 @@ urlpatterns = [
     path('api/auth/', include('authentication.urls')), 
     path('api/signup/consultancy/', consultancy_signup, name='consultancy_signup'),
     path('api/consultancies/', get_all_consultancies, name='get_all_consultancies'),
+    path('api/country-profiles/', country_profiles, name='country_profiles'),
     path('api/log-visit/', log_consultancy_visit, name='log_consultancy_visit'),
     path('api/notifications/', get_consultancy_notifications, name='get_consultancy_notifications'),
 ]

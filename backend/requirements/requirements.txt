@@ -15,3 +15,7 @@ django-cors-headers
 django-jazzmin
 psycopg2-binary
 resend
+python-socketio
+python-engineio
+aiohttp
+aio-pika

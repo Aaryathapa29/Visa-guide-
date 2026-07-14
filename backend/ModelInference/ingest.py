@@ -1,0 +1,4 @@
+- Read all PDFs
+- Chunk PDFs
+- Generate embeddings
+- Store in ChromaDB

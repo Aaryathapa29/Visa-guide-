@@ -5,8 +5,8 @@ import AspirantNavbar from "./aspirant/AspirantNavbar";
 import CountryBrowseGrid, { BrowseToggle } from "./aspirant/CountryBrowseGrid";
 import ConsultancyBrowseGrid from "./aspirant/ConsultancyBrowseGrid";
 import ChatbotModal from "./aspirant/ChatbotModal";
-import DocumentAnalysisCard from "./aspirant/DocumentAnalysisCard";
 import BookingModal from "./aspirant/BookingModal";
+import DocumentAnalysisCard from "./aspirant/DocumentAnalysisCard";
 
 type Modal = "booking" | null;
 
@@ -66,7 +66,7 @@ export default function VisaAspirantHome() {
 
       {/* Floating consultancy chat FAB */}
       <button onClick={() => setPage("chat")} className="fixed bottom-6 right-6 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-[#f97316] text-white shadow-lg transition-all hover:scale-105 active:scale-95" aria-label="Open Visa Guide Assistant">
-        <MessageCircle className="w-6 h-6 text-white" />
+        <Sparkles className="h-5 w-5" />
       </button>
       </>}
     </div>

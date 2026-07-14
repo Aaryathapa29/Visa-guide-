@@ -1,0 +1,24 @@
+# ── Web framework ──────────────────────────────────────────────────────────
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.6
+python-multipart>=0.0.12
+python-dotenv>=1.0.1
+
+# ── LLM — Groq (free tier, no credit card needed) ──────────────────────────
+# Sign up at console.groq.com and get a free API key
+groq>=0.11.0
+
+# ── Embeddings — runs 100% locally, no API key, no cost ────────────────────
+sentence-transformers>=3.0.0
+
+# ── Vector store — local, no cost ──────────────────────────────────────────
+chromadb>=0.5.0
+
+# ── PDF reading ─────────────────────────────────────────────────────────────
+pypdf>=5.0.1
+
+# ── PostgreSQL — chat history ───────────────────────────────────────────────
+psycopg2-binary>=2.9.9
+
+# ── Utilities ───────────────────────────────────────────────────────────────
+numpy>=1.26.0

@@ -4,6 +4,7 @@ groq
 chromadb
 python-dotenv
 psycopg2-binary
+sqlalchemy
 sentence-transformers
 pypdf
 python-multipart

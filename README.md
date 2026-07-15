@@ -1,25 +1,19 @@
 # Visa Guide
 
-Visa Guide is a role-based web application for visa aspirants and consultancies.
-
-The current implementation in this repository focuses on:
-- role-based signup and login
-- manual admin verification for consultancy accounts
-- role-based homepage redirection after login
-- logout back to the role selection page
+Visa Guide is a role-based web application for visa aspirants and consultancies. The current implementation focuses on signup and login flows, consultancy verification, protected home screens, and password reset support.
 
 ## Tech Stack
 
-- Backend: Django + Django REST Framework + SimpleJWT
+- Backend: Django, Django REST Framework, SimpleJWT
 - Frontend: React + Vite + TypeScript
-- Database: PostgreSQL (`visa_guide_db`)
+- Database: SQLite by default, or PostgreSQL when the corresponding environment variables are provided
 
 ## Environment Variables
 
-The backend reads sensitive values from environment variables loaded from `backend/.env`.
-Keep secrets local. Do not commit `.env` files, API keys, database passwords, private keys, or database dumps.
+Sensitive values should be kept local in environment files and never committed.
 
-Set these locally for development:
+### Backend
+Set these in `backend/.env` when needed:
 
 - `SECRET_KEY`
 - `POSTGRES_DB`
@@ -29,102 +23,83 @@ Set these locally for development:
 - `POSTGRES_PORT`
 - `RESEND_API_KEY`
 
-Recommended local files:
+If PostgreSQL settings are not present, Django will fall back to the local SQLite database at `backend/db.sqlite3`.
 
-- `backend/.env` for Django and PostgreSQL secrets
-- `frontend/.env.local` only if you need frontend-specific local variables
+### Frontend
+If the frontend needs to target a different backend URL, add it to `frontend/.env.local`:
 
-Keep `backend/.env` local only. It is ignored by git and should not be committed.
+- `VITE_API_BASE_URL=http://localhost:8000`
+
+If this is not set, the frontend uses `http://localhost:8000` by default.
 
 ## Project Structure
 
 - `backend/`: Django backend project
-  - `backend/visa_backend/`: Django project settings and URLs
-  - `backend/authentication/`: custom user model, auth serializers/views, and admin verification actions
+  - `backend/visa_backend/`: Django settings and URL configuration
+  - `backend/authentication/`: user model, auth views/serializers, and verification logic
   - `backend/requirements/requirements.txt`: backend Python dependencies
-- `frontend/`: React frontend
-  - `frontend/src/app/`: app screens and components
-  - `frontend/src/api.ts`: axios API client (`http://127.0.0.1:8000/api/`)
-- `backend/Model Inference/`: separate model-inference utilities (not required for auth flow)
+- `frontend/`: active React frontend
+  - `frontend/src/app/`: main app screens and UI components
+  - `frontend/src/api.ts`: shared Axios client for backend requests
+- `backend/Model Inference/` and `backend/ModelInference/`: separate model-related utilities and experiments
 
 ## Authentication Flow
 
-### 1. Signup
-- Aspirant signup creates a `student` user and marks it verified.
+### Signup
+- Aspirant signup creates a verified `student` user.
 - Consultancy signup creates a `consultancy` user with `is_verified=False`.
 - Consultancy signup requires `office_name` and `license_number`.
 
-### 2. Consultancy Verification
-- Admin reviews consultancy accounts in Django Admin (`/admin/`).
-- Admin can approve/reject consultancies using actions in the User admin.
-- Consultancy login is blocked until `is_verified=True`.
+### Consultancy Verification
+- Admin can review and approve or reject consultancy accounts in Django Admin.
+- Consultancy login remains blocked until the account is verified.
 
-### 3. Login
-- Login uses email + password + selected role.
-- Backend returns JWT `access` and `refresh` tokens plus user role payload.
-- Frontend redirects users to:
-  - aspirant home for `student`
-  - consultancy home for `consultancy`
+### Login
+- Login uses email, password, and the selected role.
+- The backend returns JWT `access` and `refresh` tokens plus the user role.
+- The frontend redirects users to the aspirant or consultancy home based on the role.
 
-### 4. Logout
-- Logout clears stored auth/session keys from local storage.
-- User is returned to the role-based selection/signup page.
+### Logout
+- Logout clears stored auth/session values from local storage.
+- The user is returned to the role-based selection page.
 
-## API Endpoints (Auth)
+## API Endpoints
 
-Base path: `/api/auth/`
+Base path: `/api/`
 
-- `POST /register/`
-- `POST /login/`
-- `POST /login/refresh/`
+Auth endpoints:
+- `POST /api/auth/register/`
+- `POST /api/auth/login/`
+- `POST /api/auth/login/refresh/`
+- `POST /api/auth/password-reset/`
+- `POST /api/auth/password-reset/confirm/`
 
 ## Local Setup
 
-Use a single shared virtual environment at the repository root.
+Use a single virtual environment at the repository root.
 
-### Backend (Django)
-
-1. Create and activate virtual environment:
+### Backend
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate        # Linux / macOS
 .venv\Scripts\Activate.ps1      # Windows PowerShell
-```
 
-2. Install backend dependencies:
-
-```bash
 pip install -r backend/requirements/requirements.txt
-```
-
-3. Apply migrations:
-
-```bash
 cd backend
 python manage.py migrate
+python manage.py runserver
 ```
 
-4. (Optional) Create admin user:
+The backend runs at `http://127.0.0.1:8000`.
+
+Optional admin user:
 
 ```bash
 python manage.py createsuperuser
 ```
 
-5. Run backend server:
-
-```bash
-python manage.py runserver
-```
-
-Backend runs at `http://127.0.0.1:8000`.
-
-If you are using PostgreSQL locally, make sure the environment variables above are set before running Django.
-Do not check in `backend/.env`, `frontend/.env*`, database dumps, or private keys.
-
-### Frontend (React)
-
-In a separate terminal:
+### Frontend
 
 ```bash
 cd frontend
@@ -132,18 +107,16 @@ npm install
 npm run dev
 ```
 
-Frontend runs at `http://localhost:5173`.
+The frontend runs at `http://localhost:5173`.
 
-From the repository root, you can also run:
+From the repository root, this also works:
 
 ```bash
 npm run dev
 ```
 
-This forwards to the Vite frontend in `frontend/`.
-
 ## Notes
 
-- Frontend auth state is stored in local storage (`accessToken`, `refreshToken`, `authRole`, `authUser`).
+- Frontend auth state is stored in browser local storage (`accessToken`, `refreshToken`, `authRole`, and `authUser`).
 - CORS is configured for the local Vite ports in Django settings.
-- The model-inference module is intentionally separate from auth and homepage routing.
+- The model-inference modules are separate from the main authentication and UI flow.

@@ -6,7 +6,7 @@ Embeddings: sentence-transformers — local, no API
 Vector DB:  ChromaDB — local
 Chat logs:  PostgreSQL
 
-Run: uvicorn app:app --reload --port 8000
+Run: uvicorn app:app --reload --port 8001
 """
 
 import os
@@ -14,17 +14,19 @@ import shutil
 import tempfile
 from pathlib import Path
 
+import chromadb
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from groq import Groq
-from dotenv import load_dotenv
-import psycopg2
+from pydantic import BaseModel
 from psycopg2.extras import RealDictCursor
+import psycopg2
 
-from rag import RAGEngine, detect_country
+from rag import RAGEngine, detect_country, embed
 
 load_dotenv()  # reads your .env file
+from database import save_message, get_chat_history
 
 # ── Config ────────────────────────────────────────────────────────────────────
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -34,7 +36,7 @@ DATABASE_URL = os.getenv(
 )
 
 # Groq model — free tier, very fast
-GROQ_MODEL = "llama-3.3-70b-versatile"
+GROQ_MODEL = "llama3-8b-8192"
 
 SYSTEM_PROMPT = """You are a visa guidance assistant for a college student project.
 Only answer questions about student visas, immigration, documents, application steps,
@@ -71,10 +73,14 @@ app = FastAPI(title="Visa Guide Chatbot — College Project", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+chroma_client = chromadb.PersistentClient(path="./chroma_db")
+chroma_collection = chroma_client.get_or_create_collection(name="documents")
 
 # Global instances (created on startup)
 groq_client: Groq         | None = None
@@ -82,47 +88,20 @@ rag_engine:  RAGEngine    | None = None
 
 
 # ── PostgreSQL helpers ────────────────────────────────────────────────────────
+
 def get_db_conn():
     return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 
 def init_db():
-    """Create tables if they don't exist. Called once on startup."""
+    """Check the database connection on startup."""
     try:
         conn = get_db_conn()
-        cur  = conn.cursor()
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS chat_history (
-                id         SERIAL PRIMARY KEY,
-                role       VARCHAR(10)  NOT NULL,
-                message    TEXT         NOT NULL,
-                country    VARCHAR(30),
-                created_at TIMESTAMP    DEFAULT NOW()
-            )
-        """)
-        conn.commit()
-        cur.close()
         conn.close()
-        print("[db] PostgreSQL table ready ✓")
+        print("[db] PostgreSQL connection ready ✓")
     except Exception as e:
         print(f"[db] Could not connect to PostgreSQL: {e}")
         print("[db] Chat will still work — just won't save history.")
-
-
-def save_to_db(role: str, message: str, country: str | None = None):
-    """Save a message to PostgreSQL. Silently skips if DB is unavailable."""
-    try:
-        conn = get_db_conn()
-        cur  = conn.cursor()
-        cur.execute(
-            "INSERT INTO chat_history (role, message, country) VALUES (%s, %s, %s)",
-            (role, message, country),
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
-    except Exception:
-        pass  # don't crash if DB is down
 
 
 # ── Startup ───────────────────────────────────────────────────────────────────
@@ -148,13 +127,16 @@ async def startup():
     print("[app] Ready ✓")
 
 
-# ── Request/Response models ───────────────────────────────────────────────────
+# ── Request/Response models ───────────────────────────────────────────────────────
 class ChatRequest(BaseModel):
     message: str
+    session_id: str | None = None
+
 
 class ChatResponse(BaseModel):
     answer:  str
     country: str | None = None
+
 
 class UploadResponse(BaseModel):
     message:       str
@@ -177,8 +159,38 @@ def require_ready():
         )
 
 
-# ── Endpoints ─────────────────────────────────────────────────────────────────
+def build_chroma_context(question: str, top_k: int = 3) -> str:
+    query_embedding = embed([question])[0]
+    results = chroma_collection.query(
+        query_embeddings=[query_embedding],
+        n_results=top_k,
+        include=["documents", "metadatas", "distances"],
+    )
 
+    documents = results.get("documents", [])
+    metadatas = results.get("metadatas", [])
+    distances = results.get("distances", [])
+
+    if not documents or not documents[0]:
+        return "No relevant documents were found in the knowledge base."
+
+    chunks = []
+    for doc, meta, dist in zip(documents[0], metadatas[0], distances[0]):
+        source = meta.get("source", "unknown") if isinstance(meta, dict) else "unknown"
+        country = meta.get("country", "Unknown") if isinstance(meta, dict) else "Unknown"
+        relevance = round(1 - dist, 4) if isinstance(dist, float) else None
+        score_text = f" (relevance: {relevance})" if relevance is not None else ""
+        chunks.append(f"[Source: {country} / {source}]{score_text}
+{doc}")
+
+    return "
+
+---
+
+".join(chunks)
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
 @app.get("/")
 def root():
     return {"message": "Visa Guide Chatbot is running!", "docs": "/docs"}
@@ -195,7 +207,6 @@ def health():
     }
 
 
-# ── POST /chat ────────────────────────────────────────────────────────────────
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     require_ready()
@@ -206,41 +217,34 @@ async def chat(req: ChatRequest):
     if len(message) > 1000:
         raise HTTPException(400, "Message too long. Keep it under 1000 characters.")
 
+    session_id = (req.session_id or "default").strip() or "default"
     country = detect_country(message)
 
-    # Save user message to PostgreSQL
-    save_to_db("user", message, country)
+    history_messages = get_chat_history(session_id, limit=10)
+    history_block = "
+".join(
+        f"{item['sender']}: {item['message']}" for item in history_messages
+    ) if history_messages else "No prior conversation history."
 
-    # Off-topic guard
-    if not is_visa_question(message):
-        answer = (
-            "I can only help with student visa questions for USA, Australia, and Canada. "
-            "Try asking about required documents, processing times, fees, or application steps!"
-        )
-        save_to_db("bot", answer)
-        return ChatResponse(answer=answer)
+    context_block = build_chroma_context(message, top_k=3)
+    system_prompt = (
+        f"{SYSTEM_PROMPT}
 
-    # Retrieve relevant chunks from ChromaDB
-    try:
-        context = rag_engine.build_context(message)
-    except Exception as e:
-        raise HTTPException(502, f"Retrieval error: {e}")
+"
+        f"Relevant document context:
+{context_block}
 
-    # Build the prompt
-    user_prompt = (
-        f"Here is relevant information from visa documents:\n\n"
-        f"{context}\n\n"
-        f"---\n\n"
-        f"Student's question: {message}"
+"
+        f"Conversation history:
+{history_block}"
     )
 
-    # Call Groq LLM (free)
     try:
         response = groq_client.chat.completions.create(
             model=GROQ_MODEL,
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user",   "content": user_prompt},
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": message},
             ],
             max_tokens=700,
             temperature=0.3,
@@ -249,13 +253,12 @@ async def chat(req: ChatRequest):
     except Exception as e:
         raise HTTPException(502, f"Groq LLM error: {e}")
 
-    # Save bot answer to PostgreSQL
-    save_to_db("bot", answer, country)
+    save_message(session_id, "user", message)
+    save_message(session_id, "assistant", answer)
 
     return ChatResponse(answer=answer, country=country)
 
 
-# ── POST /upload (ACCEPTANCE CRITERIA) ────────────────────────────────────────
 @app.post("/upload", response_model=UploadResponse)
 async def upload(
     file:    UploadFile = File(...),
@@ -294,7 +297,6 @@ async def upload(
     )
 
 
-# ── GET /history ──────────────────────────────────────────────────────────────
 @app.get("/history")
 def history(limit: int = 50):
     """Returns the last N messages from PostgreSQL."""
@@ -302,8 +304,8 @@ def history(limit: int = 50):
         conn = get_db_conn()
         cur  = conn.cursor()
         cur.execute(
-            "SELECT role, message, country, created_at "
-            "FROM chat_history ORDER BY created_at DESC LIMIT %s",
+            "SELECT session_id, sender, message, timestamp "
+            "FROM chat_history ORDER BY timestamp DESC LIMIT %s",
             (limit,),
         )
         rows = cur.fetchall()

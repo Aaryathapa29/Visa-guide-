@@ -7,6 +7,9 @@ frontend/*.tsbuildinfo
 \.venv/
 backend/.venv/
 backend/venv/
+backend/ModelInference/.venv/
+backend/document_parser_v2/.venv/
+backend/ModelInference/chroma_db/
 backend/embeddings/
 backend/__pycache__/
 __pycache__/
@@ -24,6 +27,9 @@ backend/.env.*
 frontend/.env
 frontend/.env.*
 **/.env.local
+backend/.env.example
+frontend/.env.example
+.env.example
 **/.env.development
 **/.env.development.local
 **/.env.production

@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -87,24 +88,12 @@ WSGI_APPLICATION = 'visa_backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# Use PostgreSQL when the required environment variables are present.
-# Otherwise fall back to SQLite for local development.
-POSTGRES_DB = os.getenv('POSTGRES_DB')
-POSTGRES_USER = os.getenv('POSTGRES_USER')
-POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
-POSTGRES_HOST = os.getenv('POSTGRES_HOST', 'localhost')
-POSTGRES_PORT = os.getenv('POSTGRES_PORT', '5432')
+# Use DATABASE_URL when available. Otherwise fall back to SQLite for local development.
+DATABASE_URL = os.getenv('DATABASE_URL')
 
-if POSTGRES_DB and POSTGRES_USER and POSTGRES_PASSWORD:
+if DATABASE_URL:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': POSTGRES_DB,
-            'USER': POSTGRES_USER,
-            'PASSWORD': POSTGRES_PASSWORD,
-            'HOST': POSTGRES_HOST,
-            'PORT': POSTGRES_PORT,
-        }
+        'default': dj_database_url.config(default=DATABASE_URL)
     }
 else:
     DATABASES = {
@@ -154,9 +143,6 @@ AUTH_USER_MODEL = 'authentication.User'
 # Allow your React frontend to connect
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
 ]
 
 # Local development email settings: print reset emails to the terminal.

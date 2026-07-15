@@ -51,12 +51,13 @@
 
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
+from django.utils import timezone
 from django.utils.http import urlsafe_base64_decode
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 
-from .models import User
+from .models import LoginHistory, User
 
 UserModel = get_user_model()
 
@@ -116,6 +117,31 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            'id',
+            'username',
+            'email',
+            'role',
+            'is_verified',
+            'license_number',
+            'office_name',
+            'date_joined',
+            'last_login',
+        )
+
+
+class LoginHistorySerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(source='user.id', read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta:
+        model = LoginHistory
+        fields = ('id', 'user_id', 'username', 'login_time', 'ip_address', 'user_agent')
+
+
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
@@ -143,6 +169,18 @@ class LoginSerializer(serializers.Serializer):
         if role == 'consultancy' and not user.is_verified:
             raise serializers.ValidationError({'detail': 'Your consultancy account is pending admin verification.'})
 
+        # Record the last login timestamp so Neon can query authenticated users.
+        user.last_login = timezone.now()
+        user.save(update_fields=['last_login'])
+
+        request = self.context.get('request')
+        if request is not None:
+            LoginHistory.objects.create(
+                user=user,
+                ip_address=request.META.get('REMOTE_ADDR', ''),
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            )
+
         refresh = RefreshToken.for_user(user)
 
         return {
@@ -154,6 +192,7 @@ class LoginSerializer(serializers.Serializer):
                 'email': user.email,
                 'role': user.role,
                 'is_verified': user.is_verified,
+                'last_login': user.last_login,
             },
         }
 

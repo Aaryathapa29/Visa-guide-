@@ -16,9 +16,11 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .models import ConsultancyCountryProfile, ConsultancyNotification, ConsultancyVisitNotification, User
+from .models import ConsultancyCountryProfile, ConsultancyNotification, ConsultancyVisitNotification, LoginHistory, User
 from .serializers import (
     LoginSerializer,
+    LoginHistorySerializer,
+    UserSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     RegisterSerializer,
@@ -120,6 +122,8 @@ def get_all_consultancies(request):
 
     return JsonResponse(consultancies, safe=False, status=200)
 
+    return JsonResponse(consultancies, safe=False, status=200)
+
 
 @csrf_exempt
 def country_profiles(request):
@@ -172,6 +176,43 @@ def country_profiles(request):
     ConsultancyCountryProfile.objects.bulk_create(rows)
     return JsonResponse({'detail': 'Country profiles saved.', 'count': len(rows)}, status=200)
 
+
+@csrf_exempt
+def users_list(request):
+    if request.method != 'GET':
+        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
+
+    users = list(UserModel.objects.values(
+        'id',
+        'username',
+        'email',
+        'role',
+        'is_verified',
+        'license_number',
+        'office_name',
+        'date_joined',
+        'last_login',
+    ))
+
+    return JsonResponse(users, safe=False, status=200)
+
+
+@csrf_exempt
+def login_history(request):
+    if request.method != 'GET':
+        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
+
+    history = list(LoginHistory.objects.select_related('user').values(
+        'id',
+        'user__id',
+        'user__username',
+        'login_time',
+        'ip_address',
+        'user_agent',
+    ).order_by('-login_time'))
+
+    return JsonResponse(history, safe=False, status=200)
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]  # Anyone can sign up
 
@@ -190,7 +231,7 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = LoginSerializer(data=request.data)
+        serializer = LoginSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 

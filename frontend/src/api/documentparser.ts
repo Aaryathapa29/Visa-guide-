@@ -1,7 +1,7 @@
 // frontend/src/api/documentParser.ts
-// Separate from api.ts — this talks to FastAPI (port 8001), not Django (port 8000)
+// Separate from api.ts — this talks to FastAPI (port 8002), not Django (port 8000)
 
-const PARSER_URL = import.meta.env.VITE_PARSER_URL ?? "http://localhost:8001";
+const PARSER_URL = import.meta.env.VITE_PARSER_URL ?? "http://localhost:8002";
 
 // ── Types ─────────────────────────────────────────────────────────
 

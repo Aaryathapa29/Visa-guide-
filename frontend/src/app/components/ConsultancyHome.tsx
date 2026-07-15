@@ -1,76 +1,35 @@
-import { useState } from "react";
-import { Globe, CalendarDays, MessageCircle, Users } from "lucide-react";
-import { ACCENT, DARK } from "./ui/theme";
+import { useState, useEffect } from "react";
 import type { ConsultancyTab } from "./ui/theme";
 import ConsultancyNavbar from "./consultancy/ConsultancyNavbar";
 import OnboardingWizard from "./consultancy/OnboardingWizard";
 import ConsultancyChatPanel from "./consultancy/ConsultancyChatPanel";
 import AspirantQueueTable from "./consultancy/AspirantQueueTable";
-import ConsultancyVisitNotificationsFeed from "./consultancy/ConsultancyVisitNotificationsFeed";
-
-const STATS = [
-  { label: "Countries Offered", value: "0", icon: <Globe className="w-4 h-4" />, highlight: false },
-  { label: "Pending Bookings", value: "3", icon: <CalendarDays className="w-4 h-4" />, highlight: true },
-  { label: "Active Chats", value: "2", icon: <MessageCircle className="w-4 h-4" />, highlight: false },
-  { label: "Aspirants Served", value: "124", icon: <Users className="w-4 h-4" />, highlight: false },
-];
-
-function StatsBar() {
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {STATS.map((s) => (
-        <div
-          key={s.label}
-          className="rounded-2xl p-4 flex items-center gap-3"
-          style={{
-            background: s.highlight ? "#fffbeb" : "#fff",
-            border: `1px solid ${s.highlight ? "#fde68a" : "#dce6f5"}`,
-          }}
-        >
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{
-              background: s.highlight ? "#fef3c7" : "#eef2fb",
-              color: s.highlight ? "#d97706" : ACCENT,
-            }}
-          >
-            {s.icon}
-          </div>
-          <div>
-            <div className="font-bold" style={{ color: DARK, fontSize: "1.2rem" }}>{s.value}</div>
-            <div className="text-xs" style={{ color: "#5a6e8a" }}>{s.label}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function SectionWrapper({
-  title,
-  subtitle,
-  children,
-}: {
-  title: string;
-  subtitle: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className="rounded-2xl p-6 space-y-5"
-      style={{ background: "#fff", border: "1px solid #dce6f5" }}
-    >
-      <div>
-        <h2 className="font-bold" style={{ color: DARK, fontSize: "1rem" }}>{title}</h2>
-        <p className="text-xs mt-0.5" style={{ color: "#5a6e8a" }}>{subtitle}</p>
-      </div>
-      {children}
-    </div>
-  );
-}
 
 export default function ConsultancyHome() {
   const [activeTab, setActiveTab] = useState<ConsultancyTab>("profile");
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (raw) {
+        const user = JSON.parse(raw);
+        if (user && user.role === "consultancy") {
+          // lazy import to avoid loading socket client for non-consultancy pages
+          import("../../socketio-service").then(({ authenticateSocket }) => {
+            authenticateSocket(user.id, "consultancy");
+          }).catch(() => null);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    return () => {
+      import("../../socketio-service").then(({ disconnectSocket }) => {
+        disconnectSocket();
+      }).catch(() => null);
+    };
+  }, []);
 
   function handleLogout() {
     localStorage.removeItem("accessToken");
@@ -81,51 +40,35 @@ export default function ConsultancyHome() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "#f0f4f8" }}>
+    <div className="aspirant-shell min-h-screen">
       <ConsultancyNavbar activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout} />
 
-      <main className="pt-16 max-w-5xl mx-auto px-4 md:px-8 py-8 space-y-6">
+      <main className="mx-auto max-w-6xl px-6 py-12 md:px-12">
         {/* Greeting */}
         <div>
-          <h1 className="font-bold" style={{ color: DARK, fontSize: "1.4rem" }}>
-            Consultancy Dashboard
-          </h1>
-          <p className="text-sm mt-1" style={{ color: "#5a6e8a" }}>
+          <p className="text-xs font-semibold uppercase tracking-[.2em] text-[#f97316]">Consultancy portal</p><h1 className="aspirant-serif mt-2 text-4xl text-[#0a1f44]">
+            Consultancy Dashboard</h1>
+          <p className="mt-3 text-sm text-slate-600">
             Manage your country profiles, respond to aspirants, and handle bookings.
           </p>
         </div>
 
-        {/* Stats */}
-        <StatsBar />
-
-        <ConsultancyVisitNotificationsFeed />
-
-        {/* Tab panels */}
         {activeTab === "profile" && (
-          <SectionWrapper
-            title="Country Profiles"
-            subtitle="Add the countries you offer visa services for, then fill in the required documents and application instructions for each."
-          >
+          <section className="mt-8 border border-slate-200 bg-white p-6 shadow-[0_4px_20px_-8px_rgba(10,31,68,.18)]"><h2 className="aspirant-serif text-2xl text-[#0a1f44]">Country Profiles</h2><p className="mt-1 text-sm text-slate-600">Add the countries you offer visa services for, then fill in the required documents and application instructions for each.</p><div className="mt-6">
             <OnboardingWizard />
-          </SectionWrapper>
+          </div></section>
         )}
 
         {activeTab === "chats" && (
-          <SectionWrapper
-            title="Aspirant Chats"
-            subtitle="Respond to messages from visa aspirants who are interested in your services."
-          >
+          <section className="mt-8 border border-slate-200 bg-white p-6 shadow-[0_4px_20px_-8px_rgba(10,31,68,.18)]"><h2 className="aspirant-serif text-2xl text-[#0a1f44]">Aspirant Chats</h2><p className="mt-1 text-sm text-slate-600">Respond to messages from visa aspirants who are interested in your services.</p><div className="mt-6">
             <ConsultancyChatPanel />
-          </SectionWrapper>
+          </div></section>
         )}
 
         {activeTab === "bookings" && (
-          <SectionWrapper
-            title="Counselling Bookings"
-            subtitle="Review pending booking requests, assign appointment times, and confirm sessions."
-          >
+          <section className="mt-8 border border-slate-200 bg-white p-6 shadow-[0_4px_20px_-8px_rgba(10,31,68,.18)]"><h2 className="aspirant-serif text-2xl text-[#0a1f44]">Counselling Bookings</h2><p className="mt-1 text-sm text-slate-600">Review pending booking requests, assign appointment times, and confirm sessions.</p><div className="mt-6">
             <AspirantQueueTable />
-          </SectionWrapper>
+          </div></section>
         )}
       </main>
     </div>

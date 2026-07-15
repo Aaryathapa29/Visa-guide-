@@ -38,6 +38,28 @@ SEVERITY_MAP = {
     "REDUNDANCY": "Minor",
 }
 
+# FIX 1: Nepali proper nouns that LanguageTool incorrectly flags as spelling errors
+IGNORED_WORDS = {
+    "lalitpur", "tribhuvan", "kathmandu", "shrestha", "thapa",
+    "sharma", "nepal", "nepali", "leapfrog", "bagmati", "pokhara",
+    "bahadur", "rijal", "poudel", "adhikari", "bhattarai", "pradhan",
+    "gurung", "tamang", "rai", "limbu", "magar", "lama", "bajracharya",
+    "maharjan", "shrestha", "joshi", "karki", "khatri", "basnet",
+    "biratnagar", "janakpur", "bharatpur", "dharan", "butwal",
+    "tribhuvan", "pashupatinath", "swayambhunath", "boudhanath",
+    "sindhuli", "makwanpur", "chitwan", "solukhumbu", "mustang",
+    "npr", "nrs",
+}
+
+# FIX 2: LanguageTool rule IDs that produce false positives in cover letters
+IGNORED_RULE_IDS = {
+    "ENGLISH_WORD_REPEAT_BEGINNING_RULE",  # "I → Furthermore, I" — normal in cover letters
+    "COMMA_PARENTHESIS_WHITESPACE",        # cosmetic comma rules
+    "UPPERCASE_SENTENCE_START",            # false positives on names/addresses
+    "WHITESPACE_RULE",                     # whitespace formatting — not a grammar error
+    "DOUBLE_PUNCTUATION",                  # minor punctuation cosmetics
+}
+
 
 async def check_grammar(text: str, language: str = "en-US") -> list[dict]:
     """Sends text to LanguageTool and returns a normalized error list."""
@@ -56,9 +78,18 @@ async def check_grammar(text: str, language: str = "en-US") -> list[dict]:
     errors = []
     for match in data.get("matches", []):
         category_id = match.get("rule", {}).get("category", {}).get("id", "STYLE")
+        rule_id = match.get("rule", {}).get("id", "")
         offset = match["offset"]
         length = match["length"]
         original = text[offset: offset + length]
+
+        # FIX 1: Skip known Nepali proper nouns flagged as spelling errors
+        if original.lower() in IGNORED_WORDS:
+            continue
+
+        # FIX 2: Skip known false-positive rule IDs
+        if rule_id in IGNORED_RULE_IDS:
+            continue
 
         replacements = match.get("replacements", [])
         suggestion = replacements[0]["value"] if replacements else "(no suggestion)"

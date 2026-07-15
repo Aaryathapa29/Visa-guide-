@@ -16,13 +16,20 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .models import ConsultancyNotification, ConsultancyVisitNotification, User
+from .models import ConsultancyCountryProfile, ConsultancyNotification, ConsultancyVisitNotification, User
 from .serializers import (
     LoginSerializer,
     PasswordResetConfirmSerializer,
     PasswordResetRequestSerializer,
     RegisterSerializer,
 )
+
+# Import Socket.IO client for real-time notifications
+try:
+    from socketio_client import emit_notification_to_consultancy
+    socketio_available = True
+except ImportError:
+    socketio_available = False
 
 
 UserModel = get_user_model()
@@ -112,6 +119,58 @@ def get_all_consultancies(request):
     )
 
     return JsonResponse(consultancies, safe=False, status=200)
+
+
+@csrf_exempt
+def country_profiles(request):
+    user = get_authenticated_user(request)
+
+    if request.method == 'GET':
+        if user and getattr(user, 'role', None) == 'consultancy':
+            profiles = ConsultancyCountryProfile.objects.filter(consultancy=user)
+        else:
+            profiles = ConsultancyCountryProfile.objects.select_related('consultancy').all()
+
+        return JsonResponse([
+            {
+                'id': profile.id,
+                'country': profile.country,
+                'documents': profile.documents,
+                'instructions': profile.instructions,
+                'consultancy_id': profile.consultancy_id,
+                'consultancy_name': profile.consultancy.office_name or profile.consultancy.username,
+            }
+            for profile in profiles
+        ], safe=False, status=200)
+
+    if request.method != 'PUT':
+        return JsonResponse({'detail': 'Method not allowed.'}, status=405)
+
+    if not user or getattr(user, 'role', None) != 'consultancy':
+        return JsonResponse({'detail': 'Only consultancy accounts can save country profiles.'}, status=403)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+        profiles = payload.get('profiles', [])
+    except json.JSONDecodeError:
+        return JsonResponse({'detail': 'Invalid JSON payload.'}, status=400)
+
+    if not isinstance(profiles, list):
+        return JsonResponse({'detail': 'profiles must be a list.'}, status=400)
+
+    ConsultancyCountryProfile.objects.filter(consultancy=user).delete()
+    rows = []
+    for profile in profiles:
+        country = str(profile.get('country') or '').strip()
+        if country:
+            rows.append(ConsultancyCountryProfile(
+                consultancy=user,
+                country=country,
+                documents=str(profile.get('documents') or '').strip(),
+                instructions=str(profile.get('instructions') or '').strip(),
+            ))
+    ConsultancyCountryProfile.objects.bulk_create(rows)
+    return JsonResponse({'detail': 'Country profiles saved.', 'count': len(rows)}, status=200)
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]  # Anyone can sign up
@@ -221,6 +280,21 @@ def log_consultancy_visit(request):
         visitor=visitor,
     )
 
+    # Emit real-time notification via Socket.IO
+    if socketio_available:
+        try:
+            notification_data = {
+                'id': notification.id,
+                'visitor_name': notification.visitor.username if notification.visitor else 'Anonymous visitor',
+                'message': (
+                    f"{notification.visitor.username if notification.visitor else 'An anonymous user'} visited your profile page."
+                ),
+                'timestamp': notification.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            }
+            emit_notification_to_consultancy(consultancy_id, notification_data)
+        except Exception as e:
+            print(f'Warning: Failed to emit Socket.IO notification: {e}')
+
     return JsonResponse(
         {
             'detail': 'Visit logged successfully.',
@@ -236,17 +310,17 @@ def log_consultancy_visit(request):
 
 
 def get_consultancy_notifications(request):
-    if request.method != 'GET':
+    if request.method not in ('GET', 'POST'):
         return JsonResponse({'detail': 'Method not allowed.'}, status=405)
 
     user = get_authenticated_user(request)
     if not user or getattr(user, 'role', None) != 'consultancy':
         return JsonResponse({'detail': 'Only consultancy accounts can access notifications.'}, status=403)
 
-    notifications = ConsultancyVisitNotification.objects.filter(
-        consultancy=user,
-        is_read=False,
-    ).order_by('-timestamp')
+    if request.method == 'POST':
+        ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).update(is_read=True)
+
+    notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
 
     payload = [
         {
@@ -256,8 +330,9 @@ def get_consultancy_notifications(request):
                 f"{notification.visitor.username if notification.visitor else 'An anonymous user'} visited your profile page."
             ),
             'timestamp': notification.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            'is_read': notification.is_read,
         }
         for notification in notifications
     ]
 
-    return JsonResponse({'notifications': payload}, status=200)
+    return JsonResponse({'notifications': payload, 'unread_count': sum(not item['is_read'] for item in payload)}, status=200)

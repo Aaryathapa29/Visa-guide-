@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Hand, Loader2, Bell } from "lucide-react";
 import API from "../../../api";
 import { DARK } from "../ui/theme";
+// Fixed relative path import target
+import { onNewNotification, offNewNotification } from "../../../socketio-service";
 
 type VisitNotification = {
   id: number;
@@ -17,7 +19,6 @@ export default function ConsultancyVisitNotificationsFeed() {
 
   useEffect(() => {
     let mounted = true;
-    let intervalId: number | undefined;
 
     async function loadNotifications() {
       setError("");
@@ -35,27 +36,22 @@ export default function ConsultancyVisitNotificationsFeed() {
       }
     }
 
-    async function refreshNotifications() {
-      await loadNotifications();
-    }
-
+    // initial database load
     loadNotifications();
-    intervalId = window.setInterval(refreshNotifications, 3000);
 
-    function handleVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        refreshNotifications();
-      }
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    // subscribe to real-time socket events cleanly
+    const handler = (notification: any) => {
+      setNotifications((prev) => {
+        // Guard checking for duplicate keys
+        if (prev.some((item) => item.id === notification.id)) return prev;
+        return [notification, ...prev];
+      });
+    };
+    onNewNotification(handler);
 
     return () => {
       mounted = false;
-      if (intervalId) {
-        window.clearInterval(intervalId);
-      }
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      offNewNotification(handler);
     };
   }, []);
 

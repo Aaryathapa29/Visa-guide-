@@ -1,0 +1,11 @@
+from django.db import migrations
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('authentication', '0003_alter_user_id'),
+        ('authentication', '0006_consultancyvisitnotification'),
+    ]
+
+    operations = []

@@ -71,3 +71,20 @@ class ConsultancyVisitNotification(models.Model):
     def __str__(self):
         visitor_name = self.visitor.username if self.visitor else 'Anonymous visitor'
         return f'{visitor_name} -> {self.consultancy.username}'
+
+
+class ConsultancyCountryProfile(models.Model):
+    consultancy = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='country_profiles',
+    )
+    country = models.CharField(max_length=100)
+    documents = models.TextField(blank=True)
+    instructions = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['consultancy', 'country'], name='unique_consultancy_country_profile'),
+        ]
+        ordering = ['country']

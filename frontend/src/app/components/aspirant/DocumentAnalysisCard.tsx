@@ -1,144 +1,17 @@
-import { useState } from "react";
-import { FileText, FileSearch, Sparkles } from "lucide-react";
-import { ModalOverlay, ModalHeader } from "../ui/ModalOverlay";
-import { ACCENT, MID } from "../ui/theme";
+import { useRef, useState } from "react";
+import { ArrowLeft, FileText, Sparkles, Upload } from "lucide-react";
 
-const FEEDBACK = [
-  {
-    type: "error" as const,
-    text: "Opening paragraph lacks a clear statement of purpose for the visa application.",
-  },
-  {
-    type: "warning" as const,
-    text: "Financial evidence section could be strengthened with specific figures.",
-  },
-  {
-    type: "success" as const,
-    text: "Ties to home country (employment, family) are clearly articulated.",
-  },
-  {
-    type: "success" as const,
-    text: "Language is formal and professional throughout.",
-  },
+const feedback = [
+  ["Needs attention", "Opening paragraph lacks a clear statement of purpose for the visa application.", "text-red-800 bg-red-50 border-red-200"],
+  ["Improve", "Financial evidence could be strengthened with specific figures.", "text-amber-800 bg-amber-50 border-amber-200"],
+  ["Strong", "Ties to home country are clearly articulated.", "text-green-800 bg-green-50 border-green-200"],
 ];
 
-const FEEDBACK_STYLES = {
-  error: { bg: "#fff1f2", border: "#fecdd3", dot: "#ef4444", text: "#991b1b" },
-  warning: { bg: "#fffbeb", border: "#fde68a", dot: "#f59e0b", text: "#92400e" },
-  success: { bg: "#f0fdf4", border: "#bbf7d0", dot: "#22c55e", text: "#14532d" },
-};
-
 export default function DocumentAnalysisCard({ onClose }: { onClose: () => void }) {
-  const [dragging, setDragging] = useState(false);
   const [uploaded, setUploaded] = useState(false);
-
-  return (
-    <ModalOverlay onClose={onClose} wide>
-      <ModalHeader
-        icon={<FileSearch className="w-4 h-4 text-white" />}
-        title="Document Analysis"
-        subtitle="Automated cover letter feedback"
-        onClose={onClose}
-      />
-
-      <div className="flex-1 overflow-y-auto p-6 space-y-5" style={{ background: "#f5f7fb" }}>
-        {!uploaded ? (
-          /* Drop zone */
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => { e.preventDefault(); setDragging(false); setUploaded(true); }}
-            className="rounded-2xl border-2 border-dashed flex flex-col items-center justify-center py-16 gap-4 transition-colors cursor-pointer"
-            style={{
-              borderColor: dragging ? ACCENT : "#c7d8f0",
-              background: dragging ? "#eef4ff" : "#fff",
-            }}
-            onClick={() => setUploaded(true)}
-            role="button"
-            aria-label="Upload cover letter"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === "Enter" && setUploaded(true)}
-          >
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center"
-              style={{ background: "#eef2fb" }}
-            >
-              <FileText className="w-7 h-7" style={{ color: ACCENT }} />
-            </div>
-            <div className="text-center">
-              <p className="font-semibold" style={{ color: "#0d1b3e" }}>Drop your cover letter here</p>
-              <p className="text-sm mt-1" style={{ color: "#5a6e8a" }}>PDF, DOCX or TXT — click to browse</p>
-            </div>
-            <div
-              className="px-4 py-2 rounded-xl text-sm font-semibold"
-              style={{ background: "#0d1b3e", color: "#fff" }}
-            >
-              Choose File
-            </div>
-          </div>
-        ) : (
-          /* Analysis results */
-          <div className="space-y-4">
-            {/* File chip */}
-            <div
-              className="flex items-center justify-between rounded-xl px-4 py-3"
-              style={{ background: "#fff", border: "1px solid #dce6f5" }}
-            >
-              <div className="flex items-center gap-3">
-                <FileText className="w-5 h-5" style={{ color: ACCENT }} />
-                <div>
-                  <div className="text-sm font-semibold" style={{ color: "#0d1b3e" }}>
-                    cover_letter_canada.pdf
-                  </div>
-                  <div className="text-xs" style={{ color: "#5a6e8a" }}>Analysed just now</div>
-                </div>
-              </div>
-              <button
-                onClick={() => setUploaded(false)}
-                className="text-xs hover:underline"
-                style={{ color: "#5a6e8a" }}
-              >
-                Remove
-              </button>
-            </div>
-
-            {/* Feedback items */}
-            <div>
-              <h4 className="font-semibold text-sm mb-3" style={{ color: "#0d1b3e" }}>AI Feedback</h4>
-              <div className="space-y-2.5">
-                {FEEDBACK.map((f, i) => {
-                  const s = FEEDBACK_STYLES[f.type];
-                  return (
-                    <div
-                      key={i}
-                      className="flex items-start gap-3 rounded-xl px-4 py-3"
-                      style={{ background: s.bg, border: `1px solid ${s.border}` }}
-                    >
-                      <div
-                        className="w-2 h-2 rounded-full mt-1.5 flex-shrink-0"
-                        style={{ background: s.dot }}
-                      />
-                      <p className="text-sm" style={{ color: s.text }}>{f.text}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Score */}
-            <div
-              className="rounded-xl p-4 flex items-center gap-3"
-              style={{ background: "#eef4ff", border: "1px solid #bfdbfe" }}
-            >
-              <Sparkles className="w-5 h-5 flex-shrink-0" style={{ color: ACCENT }} />
-              <p className="text-sm" style={{ color: MID }}>
-                Overall score: <strong>72 / 100</strong> — Good foundation. Address the flagged items
-                to strengthen your application.
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-    </ModalOverlay>
-  );
+  const fileInput = useRef<HTMLInputElement>(null);
+  return <main className="aspirant-shell min-h-[calc(100vh-4rem)]">
+    <section className="aspirant-hero relative flex min-h-[42vh] items-end overflow-hidden border-b border-white/10 text-white"><div className="relative mx-auto w-full max-w-6xl px-6 py-12"><button onClick={onClose} className="mb-8 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/75 hover:text-[#f97316]"><ArrowLeft className="h-4 w-4" />Back to explore</button><p className="text-[11px] font-semibold uppercase tracking-[.25em] text-[#f97316]">AI Toolkit</p><h1 className="aspirant-serif mt-3 text-4xl leading-tight tracking-tight md:text-6xl">Document <span className="italic text-[#f97316]">Analyser.</span></h1><div className="mt-6 h-0.5 w-16 bg-[#f97316]" /></div></section>
+    <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6">{!uploaded ? <div onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); setUploaded(true); }} onClick={() => fileInput.current?.click()} className="cursor-pointer border border-dashed border-slate-300 bg-white p-10 text-center shadow-[0_4px_20px_-8px_rgba(10,31,68,.18)]"><input ref={fileInput} onChange={() => setUploaded(true)} type="file" className="hidden" accept=".pdf,.doc,.docx,.txt,image/*" /><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-slate-100 text-[#0a1f44]"><FileText className="h-6 w-6" /></span><h2 className="aspirant-serif mt-5 text-2xl text-[#0a1f44]">Upload a document to analyse</h2><p className="mx-auto mt-2 max-w-lg text-sm text-slate-600">Drop a PDF or image of your SOP, LOR, bank statement or I-20 and we'll flag missing fields, tone and required signatures.</p><button type="button" className="mt-6 inline-flex items-center gap-2 bg-[#f97316] px-6 py-3 text-xs font-bold uppercase tracking-widest text-white"><Upload className="h-4 w-4" />Choose file</button><p className="mt-4 text-[10px] uppercase tracking-widest text-slate-500">PDF, DOCX, TXT or image</p></div> : <div className="space-y-5"><div className="flex items-center justify-between border border-slate-200 bg-white p-5 shadow-[0_4px_20px_-8px_rgba(10,31,68,.18)]"><div className="flex items-center gap-3"><FileText className="h-6 w-6 text-[#f97316]" /><div><p className="font-semibold text-[#0a1f44]">visa_document.pdf</p><p className="text-xs text-slate-500">Analysed just now</p></div></div><button onClick={() => setUploaded(false)} className="text-sm text-slate-500 hover:text-[#0a1f44]">Remove</button></div><section className="border border-slate-200 bg-white p-6 shadow-[0_4px_20px_-8px_rgba(10,31,68,.18)]"><h2 className="aspirant-serif text-2xl text-[#0a1f44]">Analysis results</h2><div className="mt-5 space-y-3">{feedback.map(([label, text, classes]) => <div key={label} className={`border p-4 ${classes}`}><p className="text-xs font-bold uppercase tracking-wider">{label}</p><p className="mt-1 text-sm">{text}</p></div>)}</div><div className="mt-5 flex gap-3 border-t border-slate-200 pt-5 text-[#0a1f44]"><Sparkles className="h-5 w-5 shrink-0 text-[#f97316]" /><p className="text-sm">Overall score: <strong>72 / 100</strong> — good foundation. Address the flagged items to strengthen your application.</p></div></section></div>}</div>
+  </main>;
 }

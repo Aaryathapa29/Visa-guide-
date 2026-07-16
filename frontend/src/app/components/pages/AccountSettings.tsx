@@ -49,8 +49,20 @@ export default function AccountSettings({
       if (formState.name) payload.name = formState.name;
       if (formState.password) payload.password = formState.password;
 
-      await API.patch("auth/update-profile/", payload);
+      const resp = await API.patch("auth/update-profile/", payload);
       setMessage("Profile updated successfully!");
+      // Update localStorage authUser so UI reflects changes
+      try {
+        const updatedUser = resp.data?.user;
+        if (updatedUser) {
+          const raw = localStorage.getItem("authUser");
+          const current = raw ? JSON.parse(raw) : {};
+          const merged = { ...current, ...updatedUser };
+          localStorage.setItem("authUser", JSON.stringify(merged));
+        }
+      } catch (e) {
+        // ignore localStorage write errors
+      }
       setFormState(prev => ({ ...prev, password: "", confirmPassword: "" }));
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || err.response?.data?.message || "Failed to update profile.";

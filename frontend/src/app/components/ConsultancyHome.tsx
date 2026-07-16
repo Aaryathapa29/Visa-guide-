@@ -43,12 +43,26 @@ export default function ConsultancyHome() {
     window.location.reload();
   }
 
-  const userName = localStorage.getItem("authUser")
-    ? JSON.parse(localStorage.getItem("authUser") || "{}").email
-    : "";
-  const consultancyName = localStorage.getItem("authUser")
-    ? JSON.parse(localStorage.getItem("authUser") || "{}").office_name
-    : "";
+  const userName = (() => {
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (!raw) return "";
+      const u = JSON.parse(raw);
+      return u.username || u.first_name || u.email || "";
+    } catch (e) {
+      return "";
+    }
+  })();
+  const consultancyName = (() => {
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (!raw) return "";
+      const u = JSON.parse(raw);
+      return u.office_name || u.username || u.email || "";
+    } catch (e) {
+      return "";
+    }
+  })();
 
   if (page === "settings") {
     return (

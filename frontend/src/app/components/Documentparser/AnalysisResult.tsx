@@ -26,7 +26,9 @@ export default function AnalysisResultView({ result, onReset }: AnalysisResultPr
       </div>
 
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-slate-700">{result.summary}</p>
+        {result.summary && !/AI reviewer could not run|GEMINI_API_KEY is not configured/i.test(result.summary) && (
+          <p className="text-sm text-slate-700">{result.summary}</p>
+        )}
         {onReset && (
           <button
             type="button"

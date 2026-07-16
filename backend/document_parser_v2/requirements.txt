@@ -6,6 +6,7 @@ python-dotenv
 psycopg2-binary
 protobuf==4.25.8
 spacy
+sqlalchemy
 httpx
 python-multipart
 python-docx

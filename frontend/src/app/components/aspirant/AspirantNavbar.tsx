@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, FileSearch, GraduationCap } from "lucide-react";
+import { FileSearch, GraduationCap } from "lucide-react";
 import ProfileDropdown from "../ui/ProfileDropdown";
 import LogoutConfirmationModal from "../modals/LogoutConfirmationModal";
 
@@ -25,9 +25,16 @@ export default function AspirantNavbar({
     }
   };
 
-  const userName = localStorage.getItem("authUser")
-    ? JSON.parse(localStorage.getItem("authUser") || "{}").email
-    : "";
+  const userName = (() => {
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (!raw) return "";
+      const u = JSON.parse(raw);
+      return u.first_name || u.username || u.email || "";
+    } catch (e) {
+      return "";
+    }
+  })();
 
   return (
     <>
@@ -46,7 +53,6 @@ export default function AspirantNavbar({
         </nav>
 
         <div className="flex items-center gap-1">
-          <button className="relative grid h-10 w-10 place-items-center rounded-full text-white/80 transition-colors hover:bg-white/5 hover:text-[#f97316]" aria-label="Notifications"><Bell className="h-5 w-5" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#f97316]" /></button>
           <ProfileDropdown
             userName={userName}
             onSettingsClick={onOpenSettings}

@@ -58,7 +58,16 @@ export default function ConsultancyNavbar({
   };
 
   const userName = localStorage.getItem("authUser")
-    ? JSON.parse(localStorage.getItem("authUser") || "{}").email
+    ? (() => {
+        try {
+          const raw = localStorage.getItem("authUser");
+          if (!raw) return "";
+          const u = JSON.parse(raw);
+          return u.office_name || u.first_name || u.username || u.email || "";
+        } catch (e) {
+          return "";
+        }
+      })()
     : "";
 
   return (

@@ -326,10 +326,7 @@ def log_consultancy_visit(request):
         try:
             notification_data = {
                 'id': notification.id,
-                'visitor_name': notification.visitor.username if notification.visitor else 'Anonymous visitor',
-                'message': (
-                    f"{notification.visitor.username if notification.visitor else 'An anonymous user'} visited your profile page."
-                ),
+                'message': 'A user visited your profile page.',
                 'timestamp': notification.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
             }
             emit_notification_to_consultancy(consultancy_id, notification_data)
@@ -366,10 +363,8 @@ def get_consultancy_notifications(request):
     payload = [
         {
             'id': notification.id,
-            'visitor_name': notification.visitor.username if notification.visitor else 'Anonymous visitor',
-            'message': (
-                f"{notification.visitor.username if notification.visitor else 'An anonymous user'} visited your profile page."
-            ),
+            'visitor_name': 'Anonymous visitor',
+            'message': 'A user visited your profile page.',
             'timestamp': notification.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
             'is_read': notification.is_read,
         }

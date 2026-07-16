@@ -23,6 +23,9 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 from rag import RAGEngine, detect_country
+from logger import logger
+
+logger.info("Chat request received")
 
 load_dotenv()  # reads your .env file
 

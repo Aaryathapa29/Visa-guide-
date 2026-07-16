@@ -98,12 +98,28 @@ Auth endpoints:
 
 Use separate Python virtual environments for each backend service.
 
+> For Git Bash on Windows, use `source .venv/Scripts/activate` to activate the virtual environment instead of PowerShell's `Activate.ps1`.
+
 ### Main Django backend
+
+#### Git Bash / WSL
 
 ```bash
 cd backend
+python -m venv .venv
+source .venv/Scripts/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver 8000
+```
+
+#### PowerShell
+
+```powershell
+cd backend
 py -3.11 -m venv .venv
-.venv\Scripts\Activate.ps1      # Windows PowerShell
+.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python manage.py migrate
@@ -112,7 +128,20 @@ python manage.py runserver 8000
 
 ### Chatbot service
 
+#### Git Bash / WSL
+
 ```bash
+cd backend/ModelInference
+python -m venv .venv
+source .venv/Scripts/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+uvicorn app:app --reload --port 8001
+```
+
+#### PowerShell
+
+```powershell
 cd backend/ModelInference
 py -3.11 -m venv .venv
 .venv\Scripts\Activate.ps1
@@ -123,7 +152,20 @@ uvicorn app:app --reload --port 8001
 
 ### Document parser service
 
+#### Git Bash / WSL
+
 ```bash
+cd backend/document_parser_v2
+python -m venv .venv
+source .venv/Scripts/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+uvicorn main:app --reload --port 8002
+```
+
+#### PowerShell
+
+```powershell
 cd backend/document_parser_v2
 py -3.11 -m venv .venv
 .venv\Scripts\Activate.ps1
@@ -147,6 +189,10 @@ From the repository root, this also works:
 ```bash
 npm run dev
 ```
+
+### Environment files
+
+Create local `.env` files in the relevant service folders and keep them out of version control. Example values should be documented in `.env.example` if you add one.
 
 ## Notes
 

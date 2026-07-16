@@ -35,8 +35,9 @@ DATABASE_URL = os.getenv(
     "postgresql://postgres:password@localhost:5432/visa_chatbot"
 )
 
-# Groq model — free tier, very fast
-GROQ_MODEL = "llama3-8b-8192"
+# Groq model — use a currently supported model name
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+FALLBACK_GROQ_MODEL = os.getenv("GROQ_FALLBACK_MODEL", "llama-3.1-8b-instant")
 
 SYSTEM_PROMPT = """You are a visa guidance assistant for a college student project.
 Only answer questions about student visas, immigration, documents, application steps,
@@ -180,14 +181,38 @@ def build_chroma_context(question: str, top_k: int = 3) -> str:
         country = meta.get("country", "Unknown") if isinstance(meta, dict) else "Unknown"
         relevance = round(1 - dist, 4) if isinstance(dist, float) else None
         score_text = f" (relevance: {relevance})" if relevance is not None else ""
-        chunks.append(f"[Source: {country} / {source}]{score_text}
-{doc}")
+        chunks.append(f"[Source: {country} / {source}]{score_text}{doc}")
 
-    return "
+    return "\n\n---\n\n".join(chunks)
 
----
+# def build_chroma_context(question: str, top_k: int = 3) -> str:
+#     query_embedding = embed([question])[0]
+#     results = chroma_collection.query(
+#         query_embeddings=[query_embedding],
+#         n_results=top_k,
+#         include=["documents", "metadatas", "distances"],
+#     )
 
-".join(chunks)
+#     documents = results.get("documents", [])
+#     metadatas = results.get("metadatas", [])
+#     distances = results.get("distances", [])
+
+#     if not documents or not documents[0]:
+#         return "No relevant documents were found in the knowledge base."
+
+#     chunks = []
+#     for doc, meta, dist in zip(documents[0], metadatas[0], distances[0]):
+#         source = meta.get("source", "unknown") if isinstance(meta, dict) else "unknown"
+#         country = meta.get("country", "Unknown") if isinstance(meta, dict) else "Unknown"
+#         relevance = round(1 - dist, 4) if isinstance(dist, float) else None
+#         score_text = f" (relevance: {relevance})" if relevance is not None else ""
+#         chunks.append(f"[Source: {country} / {source}]{score_text}{doc}")
+
+#     return "
+
+# ---
+
+# ".join(chunks)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -221,22 +246,15 @@ async def chat(req: ChatRequest):
     country = detect_country(message)
 
     history_messages = get_chat_history(session_id, limit=10)
-    history_block = "
-".join(
+    history_block = "".join(
         f"{item['sender']}: {item['message']}" for item in history_messages
     ) if history_messages else "No prior conversation history."
 
     context_block = build_chroma_context(message, top_k=3)
     system_prompt = (
-        f"{SYSTEM_PROMPT}
-
-"
-        f"Relevant document context:
-{context_block}
-
-"
-        f"Conversation history:
-{history_block}"
+        f"{SYSTEM_PROMPT}"
+        f"Relevant document context: {context_block}"
+        f"Conversation history:{history_block}"
     )
 
     try:
@@ -250,8 +268,20 @@ async def chat(req: ChatRequest):
             temperature=0.3,
         )
         answer = response.choices[0].message.content.strip()
-    except Exception as e:
-        raise HTTPException(502, f"Groq LLM error: {e}")
+    except Exception as first_error:
+        try:
+            response = groq_client.chat.completions.create(
+                model=FALLBACK_GROQ_MODEL,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": message},
+                ],
+                max_tokens=700,
+                temperature=0.3,
+            )
+            answer = response.choices[0].message.content.strip()
+        except Exception as fallback_error:
+            raise HTTPException(502, f"Groq LLM error: {first_error} | fallback: {fallback_error}") from fallback_error
 
     save_message(session_id, "user", message)
     save_message(session_id, "assistant", answer)

@@ -8,3 +8,4 @@ protobuf==4.25.8
 spacy
 httpx
 python-multipart
+python-docx

@@ -49,8 +49,20 @@ export default function LoginPanel({ role, onBack, onSignUp, onForgotPassword, o
         }
       }
     } catch (err: any) {
+      const status = err.response?.status;
       const detail = err.response?.data?.detail;
-      if (detail) {
+      
+      // Provide specific error messages based on status
+      if (status === 401) {
+        // Unauthorized - could be wrong email or password
+        if (detail?.toLowerCase().includes("email")) {
+          setError("Email address not found. Please check and try again, or sign up for a new account.");
+        } else if (detail?.toLowerCase().includes("password")) {
+          setError("Incorrect password. Please try again.");
+        } else {
+          setError("Invalid email or password. Please try again.");
+        }
+      } else if (detail) {
         setError(detail);
       } else {
         setError("Connection failed. Check if the Django backend server is awake.");

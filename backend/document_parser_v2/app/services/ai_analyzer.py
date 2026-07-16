@@ -51,8 +51,7 @@ def ai_tone_and_visa_check(text: str, spacy_data: dict, grammar_error_count: int
     if not GEMINI_API_KEY:
         raise HTTPException(
             status_code=500,
-            detail="GEMINI_API_KEY is not configured. Get a free key at "
-                   "https://aistudio.google.com/app/apikey and add it to .env",
+            detail="GEMINI_API_KEY not set in environment. Please obtain a free key from https://aistudio.google.com/app/apikey and set it in the .env file.",
         )
 
     context = f"""Facts already computed elsewhere (do not recheck):

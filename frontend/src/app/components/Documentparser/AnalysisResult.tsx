@@ -1,8 +1,9 @@
-import { AnalysisResult as Result, GrammarError } from "../../../api/documentParser";
+import type { AnalysisResult as AnalysisResultType, GrammarError } from "../../../api/documentParser";
 
 
 interface AnalysisResultProps {
-  result: AnalysisResult;
+  result: AnalysisResultType;
+  onReset?: () => void;
 }
 
 const severityColor: Record<string, string> = {
@@ -11,7 +12,7 @@ const severityColor: Record<string, string> = {
   Minor: "bg-yellow-50 text-yellow-700 border-yellow-200",
 };
 
-export default function AnalysisResultView({ result }: AnalysisResultProps) {
+export default function AnalysisResultView({ result, onReset }: AnalysisResultProps) {
   return (
     <div className="space-y-6 rounded-md border border-gray-200 p-5">
       <div className="flex items-center justify-between">
@@ -23,9 +24,20 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
             {result.overall_score}/100 · Grade {result.grade}
           </p>
         </div>
+        {onReset && (
+          <div>
+            <button
+              type="button"
+              onClick={onReset}
+              className="rounded-lg bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-200"
+            >
+              Analyze another
+            </button>
+          </div>
+        )}
       </div>
 
-      <p className="text-sm text-gray-700">{result.summary}</p>
+      <p className="text-sm text-gray-700">{result.summary ?? ""}</p>
 
       <div className="grid grid-cols-3 gap-3 text-center text-sm">
         <div className="rounded-md bg-red-50 p-2 text-red-700">
@@ -39,10 +51,10 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
         </div>
       </div>
 
-      {result.grammar_errors.length > 0 && (
+      {(result.grammar_errors ?? []).length > 0 && (
         <div className="space-y-2">
           <h3 className="text-sm font-medium text-gray-800">Grammar and phrasing</h3>
-          {result.grammar_errors.map((err) => (
+          {(result.grammar_errors ?? []).map((err) => (
             <div
               key={err.id}
               className={`rounded-md border p-3 text-sm ${severityColor[err.severity] ?? "border-gray-200 bg-gray-50"}`}
@@ -62,7 +74,7 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
         <div>
           <h3 className="text-sm font-medium text-gray-800">Strengths</h3>
           <ul className="mt-1 list-inside list-disc text-sm text-gray-600">
-            {result.strengths.map((s, i) => (
+              {(result.strengths ?? []).map((s, i) => (
               <li key={i}>{s}</li>
             ))}
           </ul>
@@ -70,7 +82,7 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
         <div>
           <h3 className="text-sm font-medium text-gray-800">Improve</h3>
           <ul className="mt-1 list-inside list-disc text-sm text-gray-600">
-            {result.improvements.map((s, i) => (
+              {(result.improvements ?? []).map((s, i) => (
               <li key={i}>{s}</li>
             ))}
           </ul>
@@ -80,7 +92,7 @@ export default function AnalysisResultView({ result }: AnalysisResultProps) {
       <div>
         <h3 className="text-sm font-medium text-gray-800">Visa checklist</h3>
         <ul className="mt-1 space-y-1 text-sm text-gray-600">
-          {Object.entries(result.visa_checklist).map(([key, present]) => (
+          {Object.entries(result.visa_checklist ?? {}).map(([key, present]) => (
             <li key={key} className="flex items-center gap-2">
               <span className={present ? "text-green-600" : "text-gray-400"}>
                 {present ? "✓" : "○"}

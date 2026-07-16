@@ -93,7 +93,7 @@ export default function DocumentParser({ onClose }: { onClose: () => void }) {
           className="rounded-xl p-4 text-sm font-medium"
           style={{ background: "#fef2f2", color: "#dc2626" }}
         >
-          ❌ {error} — make sure FastAPI is running on port 8001 and Docker is open.
+          ❌ {error} — make sure the document parser is running on port 8002 and Docker is open.
         </div>
       )}
     </div>

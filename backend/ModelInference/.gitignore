@@ -9,6 +9,11 @@ venv/
 __pycache__/
 *.pyc
 
+# ChromaDB vector store — derived data, rebuilt locally from data/ on startup.
+# Never commit it: a store written by one ChromaDB version fails to load on another.
+chroma_db/
+*.db
+
 # VS Code
 .vscode/
 

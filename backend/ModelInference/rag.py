@@ -95,6 +95,23 @@ def get_chroma_collection():
     )
 
 
+def reset_chroma_store() -> None:
+    """Delete the on-disk vector store so it can be rebuilt from data/.
+    Used when the persisted store was written by an incompatible ChromaDB version."""
+    import shutil
+    # Drop ChromaDB's cached client for this path so a fresh client is created.
+    try:
+        from chromadb.api.shared_system_client import SharedSystemClient
+        SharedSystemClient.clear_system_cache()
+    except Exception:
+        try:
+            import chromadb
+            chromadb.api.client.SharedSystemClient.clear_system_cache()
+        except Exception:
+            pass
+    shutil.rmtree(CHROMA_DIR, ignore_errors=True)
+
+
 # ── Document metadata helpers ─────────────────────────────────────────────────
 def country_for(filename: str) -> str:
     if filename in DOC_REGISTRY:
@@ -314,12 +331,22 @@ def is_smalltalk(message: str) -> bool:
 class RAGEngine:
     """Manages the ChromaDB collection (retrieval + document ingest)."""
 
+    def _open_and_sync(self):
+        self.collection = get_chroma_collection()
+        sync_documents(self.collection)
+
     def __init__(self):
         print("RAG 1 - Opening ChromaDB")
-        self.collection = get_chroma_collection()
-        print("RAG 2 - ChromaDB opened")
-        print("RAG 3 - Syncing documents (add/update/remove as needed)")
-        sync_documents(self.collection)
+        try:
+            self._open_and_sync()
+        except Exception as e:
+            # A chroma_db written by a different ChromaDB version (or a corrupt
+            # store) fails here. Wipe it and rebuild from data/ so the app still
+            # starts. The vector store is derived data, never hand-authored.
+            print(f"[rag] ChromaDB looks incompatible/corrupt ({type(e).__name__}: {e}).")
+            print("[rag] Rebuilding the vector store from scratch...")
+            reset_chroma_store()
+            self._open_and_sync()
         count = self.collection.count()
         print(f"RAG 4 - Collection ready with {count} chunks")
         print("RAG 5 - RAG initialization complete")

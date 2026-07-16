@@ -88,3 +88,20 @@ class ConsultancyCountryProfile(models.Model):
             models.UniqueConstraint(fields=['consultancy', 'country'], name='unique_consultancy_country_profile'),
         ]
         ordering = ['country']
+
+
+class LoginHistory(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='login_history',
+    )
+    login_time = models.DateTimeField(auto_now_add=True)
+    ip_address = models.CharField(max_length=45, blank=True, null=True)
+    user_agent = models.CharField(max_length=512, blank=True)
+
+    class Meta:
+        ordering = ['-login_time']
+
+    def __str__(self):
+        return f'LoginHistory(user={self.user.username}, login_time={self.login_time})'

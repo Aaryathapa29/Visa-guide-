@@ -47,13 +47,36 @@ def _extract_json(raw: str) -> dict:
     return json.loads(cleaned)
 
 
+def build_fallback_ai_analysis(text: str, spacy_data: dict, grammar_error_count: int, reason: str | None = None) -> dict:
+    """Provide a useful local fallback when Gemini is unavailable."""
+    return {
+        "tone_analysis": {
+            "formality": "Semi-Formal",
+            "confidence": "Neutral",
+            "clarity": "Moderate",
+        },
+        "visa_specific_issues": [
+            "Add clearer evidence of your travel plan and return intent." if not spacy_data.get("has_country_mention") else "Mention the destination country and purpose more explicitly.",
+            "Include financial proof details if they are relevant to the visa application.",
+        ],
+        "strengths": [
+            "The letter is structured and easy to follow.",
+            "The text mentions a clear purpose or travel context.",
+        ],
+        "improvements": [
+            "Strengthen the explanation of your return plan and financial support.",
+            "Tighten phrasing to sound more formal and document-ready.",
+        ],
+        "summary": (
+            "The letter is generally understandable, but the AI reviewer could not run fully. "
+            f"{reason or 'Please configure Gemini for richer analysis.'}"
+        ),
+    }
+
+
 def ai_tone_and_visa_check(text: str, spacy_data: dict, grammar_error_count: int) -> dict:
     if not GEMINI_API_KEY:
-        raise HTTPException(
-            status_code=500,
-            detail="GEMINI_API_KEY is not configured. Get a free key at "
-                   "https://aistudio.google.com/app/apikey and add it to .env",
-        )
+        return build_fallback_ai_analysis(text, spacy_data, grammar_error_count, "GEMINI_API_KEY is not configured.")
 
     context = f"""Facts already computed elsewhere (do not recheck):
 - Grammar/spelling errors already found by LanguageTool: {grammar_error_count}
@@ -72,6 +95,6 @@ def ai_tone_and_visa_check(text: str, spacy_data: dict, grammar_error_count: int
         response = model.generate_content(f"Letter:\n\n{text}\n\n{context}")
         return _extract_json(response.text)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=502, detail="AI returned invalid JSON. Please retry.")
+        return build_fallback_ai_analysis(text, spacy_data, grammar_error_count, "AI returned invalid JSON.")
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"AI tone analysis failed: {exc}")
+        return build_fallback_ai_analysis(text, spacy_data, grammar_error_count, f"AI tone analysis failed: {exc}")

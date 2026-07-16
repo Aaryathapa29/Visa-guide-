@@ -37,11 +37,9 @@ export default function UploadZone({ onFile, loading }: Props) {
           const file = e.dataTransfer.files[0];
           if (file) handleFile(file);
         }}
-        className="border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all"
-        style={{
-          borderColor: dragging ? "#2563eb" : "#cbd5e1",
-          background: dragging ? "#eff6ff" : "#f8fafc",
-        }}
+        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all ${
+          dragging ? "border-blue-500 bg-blue-50" : "border-slate-300 bg-slate-50"
+        }`}
       >
         <input
           ref={inputRef}
@@ -56,27 +54,23 @@ export default function UploadZone({ onFile, loading }: Props) {
 
         {loading ? (
           <div className="flex flex-col items-center gap-3">
-            <div
-              className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
-              style={{ borderColor: "#2563eb", borderTopColor: "transparent" }}
-            />
-            <p className="text-sm font-medium" style={{ color: "#5a6e8a" }}>
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm font-medium text-slate-600">
               Analyzing your document...
             </p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">
             <span className="text-4xl">📄</span>
-            <p className="font-semibold" style={{ color: "#0d1b3e" }}>
+            <p className="font-semibold text-[#0a1f44]">
               {dragging ? "Drop your file here" : "Drag & drop your cover letter"}
             </p>
-            <p className="text-sm" style={{ color: "#5a6e8a" }}>
+            <p className="text-sm text-slate-600">
               PDF, DOCX, or TXT — max 5MB
             </p>
             <button
               type="button"
-              className="mt-2 rounded-xl px-5 py-2 text-sm font-semibold text-white"
-              style={{ background: "#0d1b3e" }}
+              className="mt-2 rounded-md px-5 py-2 text-sm font-semibold text-white bg-[#0a1f44]"
             >
               Browse File
             </button>
@@ -85,7 +79,7 @@ export default function UploadZone({ onFile, loading }: Props) {
       </div>
 
       {error && (
-        <p className="text-sm font-medium" style={{ color: "#dc2626" }}>
+        <p className="text-sm font-medium text-red-600">
           ⚠️ {error}
         </p>
       )}

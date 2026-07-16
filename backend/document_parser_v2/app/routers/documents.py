@@ -13,6 +13,7 @@ from app.services.extractor import extract_text
 from app.services.nlp_processor import analyse_with_spacy, build_visa_checklist
 from app.services.grammar_checker import check_grammar
 from app.services.ai_analyzer import ai_tone_and_visa_check
+from app.services.storage import get_analysis_history, save_analysis_result
 
 router = APIRouter(prefix="/api/v1/analyze", tags=["documents"])
 MAX_FILE_SIZE_MB = 5
@@ -87,12 +88,21 @@ async def analyze_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=413, detail=f"File too large (max {MAX_FILE_SIZE_MB}MB).")
 
     text = extract_text(file_bytes, file.filename or "")
-    return await _run_pipeline(text, filename=file.filename)
+    result = await _run_pipeline(text, filename=file.filename)
+    save_analysis_result(result, client_id=None, filename=file.filename)
+    return result
 
 
 @router.post("/text")
 async def analyze_text(payload: TextAnalyzeRequest):
-    return await _run_pipeline(payload.text)
+    result = await _run_pipeline(payload.text)
+    save_analysis_result(result, client_id=payload.client_id, filename=None)
+    return result
+
+
+@router.get("/history")
+async def analysis_history(client_id: str | None = None, limit: int = 10):
+    return get_analysis_history(client_id=client_id, limit=limit)
 
 
 @router.get("/demo")

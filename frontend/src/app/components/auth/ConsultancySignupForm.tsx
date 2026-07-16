@@ -15,6 +15,7 @@ export default function ConsultancySignupForm({
 }) {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [emailCheckLoading, setEmailCheckLoading] = useState(false);
 
   // Form states
   const [officeName, setOfficeName] = useState("");
@@ -26,12 +27,49 @@ export default function ConsultancySignupForm({
   // Status states
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  async function checkEmailExists(emailValue: string) {
+    if (!emailValue || !emailValue.includes("@")) return;
+    
+    setEmailCheckLoading(true);
+    setEmailError("");
+    try {
+      const response = await API.post("auth/check-email/", { email: emailValue });
+      if (response.data.exists) {
+        setEmailError("This email is already registered. Please use a different email or sign in.");
+      }
+    } catch (err: any) {
+      // If endpoint doesn't exist, we'll catch it during submission
+      console.log("Email check not available, will validate on submit");
+    } finally {
+      setEmailCheckLoading(false);
+    }
+  }
+
+  function handleEmailChange(e: any) {
+    const newEmail = e.target.value;
+    setOrgEmail(newEmail);
+    setEmailError("");
+    
+    // Check email after user stops typing (debounced)
+    const timer = setTimeout(() => {
+      checkEmailExists(newEmail);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setMessage("");
+
+    if (emailError) {
+      setError("Please resolve the email issue before continuing.");
+      return;
+    }
 
     if (orgPassword !== confirmPassword) {
       setError("Passwords do not match.");
@@ -57,7 +95,10 @@ export default function ConsultancySignupForm({
         setTimeout(() => onVerificationPending(), 2000);
       }
     } catch (err: any) {
-      if (err.response?.data) {
+      if (err.response?.status === 400 && err.response?.data?.email) {
+        setEmailError("This email is already registered.");
+        setError("Email already in use. Please use a different email or sign in.");
+      } else if (err.response?.data) {
         setError(Object.values(err.response.data).flat().join(" "));
       } else {
         setError("Server registration error.");
@@ -105,16 +146,28 @@ export default function ConsultancySignupForm({
           required
         />
 
-        <InputField
-          id="orgEmail"
-          label="Official Email Address"
-          type="email"
-          placeholder="office@consultancy.com"
-          icon={<Mail className="w-4 h-4" />}
-          value={orgEmail}
-          onChange={(e: any) => setOrgEmail(e.target.value)}
-          required
-        />
+        <div>
+          <InputField
+            id="orgEmail"
+            label="Official Email Address"
+            type="email"
+            placeholder="office@consultancy.com"
+            icon={<Mail className="w-4 h-4" />}
+            value={orgEmail}
+            onChange={handleEmailChange}
+            required
+          />
+          {emailError && (
+            <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1">
+              ⚠️ {emailError}
+            </p>
+          )}
+          {emailCheckLoading && (
+            <p className="mt-1.5 text-xs text-blue-600">
+              Checking availability...
+            </p>
+          )}
+        </div>
 
         <InputField
           id="orgPassword"

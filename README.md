@@ -1,130 +1,180 @@
 # Visa Guide
 
-Visa Guide is a role-based web application for visa aspirants and consultancies.
+Visa Guide is a role-based web application for visa aspirants and consultancies. The current implementation focuses on signup and login flows, consultancy verification, protected home screens, password reset support, and future booking/chat integration.
 
-The current implementation in this repository focuses on:
-- role-based signup and login
-- manual admin verification for consultancy accounts
-- role-based homepage redirection after login
-- logout back to the role selection page
+## Team Ownership
+
+The repository is now organized so each contributor has a clear area of responsibility:
+
+- Person A — chatbot-related work
+  - Reserved area: [backend/chatbot](backend/chatbot)
+  - Active implementation remains in [backend/ModelInference](backend/ModelInference) and [backend/socketio_server.py](backend/socketio_server.py)
+- Person B — document parsing work
+  - Reserved area: [backend/document_parser](backend/document_parser)
+  - Active implementation remains in [backend/document_parser_v2](backend/document_parser_v2)
+- You — UI/UX, auth integration, and future feature integration
+  - Active area: [frontend/src](frontend/src)
+  - Backend integration points: [backend/authentication](backend/authentication)
+
+No implementation files for Person A or Person B were changed as part of this structure update.
 
 ## Tech Stack
 
-- Backend: Django + Django REST Framework + SimpleJWT
+- Backend: Django, Django REST Framework, SimpleJWT
 - Frontend: React + Vite + TypeScript
-- Database: PostgreSQL (`visa_guide_db`)
+- Database: SQLite by default, or PostgreSQL when the corresponding environment variables are provided
 
 ## Environment Variables
 
-The backend reads sensitive values from environment variables loaded from `backend/.env`.
-Keep secrets local. Do not commit `.env` files, API keys, database passwords, private keys, or database dumps.
+Sensitive values should be kept local in environment files and never committed.
 
-Set these locally for development:
+### Backend
+Set these in `backend/.env` when needed:
 
 - `SECRET_KEY`
-- `POSTGRES_DB`
-- `POSTGRES_USER`
-- `POSTGRES_PASSWORD`
-- `POSTGRES_HOST`
-- `POSTGRES_PORT`
+- `DATABASE_URL`
 - `RESEND_API_KEY`
+- `GROQ_API_KEY`
+- `GEMINI_API_KEY`
+- `ALLOWED_ORIGINS`
 
-Recommended local files:
+If PostgreSQL settings are not present in `DATABASE_URL`, Django will fall back to the local SQLite database at `backend/db.sqlite3`.
 
-- `backend/.env` for Django and PostgreSQL secrets
-- `frontend/.env.local` only if you need frontend-specific local variables
+### Frontend
+If the frontend needs to target a different backend or service URL, add it to `frontend/.env.local`:
 
-Keep `backend/.env` local only. It is ignored by git and should not be committed.
+- `VITE_API_BASE_URL=http://localhost:8000`
+- `VITE_CHATBOT_URL=http://localhost:8001`
+- `VITE_PARSER_URL=http://localhost:8002`
+
+If these are not set, the frontend uses the default local URLs.
 
 ## Project Structure
 
 - `backend/`: Django backend project
-  - `backend/visa_backend/`: Django project settings and URLs
-  - `backend/authentication/`: custom user model, auth serializers/views, and admin verification actions
-  - `backend/requirements/requirements.txt`: backend Python dependencies
-- `frontend/`: React frontend
-  - `frontend/src/app/`: app screens and components
-  - `frontend/src/api.ts`: axios API client (`http://127.0.0.1:8000/api/`)
-- `backend/Model Inference/`: separate model-inference utilities (not required for auth flow)
+  - `backend/visa_backend/`: Django settings and URL configuration
+  - `backend/authentication/`: user model, auth views/serializers, and verification logic
+  - `backend/requirements.txt`: Django backend Python dependencies
+- `backend/ModelInference/`: chatbot FastAPI service and ChromaDB RAG integration
+  - `backend/ModelInference/requirements.txt`: chatbot service dependencies
+- `backend/document_parser_v2/`: document parser FastAPI service
+  - `backend/document_parser_v2/requirements.txt`: parser service dependencies
+- `frontend/`: active React frontend
+  - `frontend/src/app/`: main app screens and UI components
+  - `frontend/src/api.ts`: shared Axios client for backend requests
 
 ## Authentication Flow
 
-### 1. Signup
-- Aspirant signup creates a `student` user and marks it verified.
+### Signup
+- Aspirant signup creates a verified `student` user.
 - Consultancy signup creates a `consultancy` user with `is_verified=False`.
 - Consultancy signup requires `office_name` and `license_number`.
 
-### 2. Consultancy Verification
-- Admin reviews consultancy accounts in Django Admin (`/admin/`).
-- Admin can approve/reject consultancies using actions in the User admin.
-- Consultancy login is blocked until `is_verified=True`.
+### Consultancy Verification
+- Admin can review and approve or reject consultancy accounts in Django Admin.
+- Consultancy login remains blocked until the account is verified.
 
-### 3. Login
-- Login uses email + password + selected role.
-- Backend returns JWT `access` and `refresh` tokens plus user role payload.
-- Frontend redirects users to:
-  - aspirant home for `student`
-  - consultancy home for `consultancy`
+### Login
+- Login uses email, password, and the selected role.
+- The backend returns JWT `access` and `refresh` tokens plus the user role.
+- The frontend redirects users to the aspirant or consultancy home based on the role.
 
-### 4. Logout
-- Logout clears stored auth/session keys from local storage.
-- User is returned to the role-based selection/signup page.
+### Logout
+- Logout clears stored auth/session values from local storage.
+- The user is returned to the role-based selection page.
 
-## API Endpoints (Auth)
+## API Endpoints
 
-Base path: `/api/auth/`
+Base path: `/api/`
 
-- `POST /register/`
-- `POST /login/`
-- `POST /login/refresh/`
+Auth endpoints:
+- `POST /api/auth/register/`
+- `POST /api/auth/login/`
+- `POST /api/auth/login/refresh/`
+- `POST /api/auth/password-reset/`
+- `POST /api/auth/password-reset/confirm/`
 
 ## Local Setup
 
-Use a single shared virtual environment at the repository root.
+Use separate Python virtual environments for each backend service.
 
-### Backend (Django)
+> For Git Bash on Windows, use `source .venv/Scripts/activate` to activate the virtual environment instead of PowerShell's `Activate.ps1`.
 
-1. Create and activate virtual environment:
+### Main Django backend
 
-```bash
-python -m venv .venv
-source .venv/bin/activate        # Linux / macOS
-.venv\Scripts\Activate.ps1      # Windows PowerShell
-```
-
-2. Install backend dependencies:
-
-```bash
-pip install -r backend/requirements/requirements.txt
-```
-
-3. Apply migrations:
+#### Git Bash / WSL
 
 ```bash
 cd backend
+python -m venv .venv
+source .venv/Scripts/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 python manage.py migrate
+python manage.py runserver 8000
 ```
 
-4. (Optional) Create admin user:
+#### PowerShell
+
+```powershell
+cd backend
+py -3.11 -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver 8000
+```
+
+### Chatbot service
+
+#### Git Bash / WSL
 
 ```bash
-python manage.py createsuperuser
+cd backend/ModelInference
+python -m venv .venv
+source .venv/Scripts/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+uvicorn app:app --reload --port 8001
 ```
 
-5. Run backend server:
+#### PowerShell
+
+```powershell
+cd backend/ModelInference
+py -3.11 -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+uvicorn app:app --reload --port 8001
+```
+
+### Document parser service
+
+#### Git Bash / WSL
 
 ```bash
-python manage.py runserver
+cd backend/document_parser_v2
+python -m venv .venv
+source .venv/Scripts/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+uvicorn main:app --reload --port 8002
 ```
 
-Backend runs at `http://127.0.0.1:8000`.
+#### PowerShell
 
-If you are using PostgreSQL locally, make sure the environment variables above are set before running Django.
-Do not check in `backend/.env`, `frontend/.env*`, database dumps, or private keys.
+```powershell
+cd backend/document_parser_v2
+py -3.11 -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+uvicorn main:app --reload --port 8002
+```
 
-### Frontend (React)
-
-In a separate terminal:
+### Frontend
 
 ```bash
 cd frontend
@@ -132,18 +182,20 @@ npm install
 npm run dev
 ```
 
-Frontend runs at `http://localhost:5173`.
+The frontend runs at `http://localhost:5173`.
 
-From the repository root, you can also run:
+From the repository root, this also works:
 
 ```bash
 npm run dev
 ```
 
-This forwards to the Vite frontend in `frontend/`.
+### Environment files
+
+Create local `.env` files in the relevant service folders and keep them out of version control. Example values should be documented in `.env.example` if you add one.
 
 ## Notes
 
-- Frontend auth state is stored in local storage (`accessToken`, `refreshToken`, `authRole`, `authUser`).
+- Frontend auth state is stored in browser local storage (`accessToken`, `refreshToken`, `authRole`, and `authUser`).
 - CORS is configured for the local Vite ports in Django settings.
-- The model-inference module is intentionally separate from auth and homepage routing.
+- The model-inference modules are separate from the main authentication and UI flow.

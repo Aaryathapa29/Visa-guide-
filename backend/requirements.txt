@@ -1,1 +1,9 @@
--r requirements/requirements.txt
+Django
+django-cors-headers
+dj-database-url
+psycopg2-binary
+python-dotenv
+django-jazzmin
+resend
+djangorestframework
+djangorestframework-simplejwt

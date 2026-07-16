@@ -33,7 +33,12 @@ chat_history = Table(
     Column("timestamp", DateTime, nullable=False, default=datetime.utcnow),
 )
 
-metadata.create_all(engine)
+# Create the table if the database is reachable. If Postgres is down we don't
+# crash on import — chat still works, history just won't be saved.
+try:
+    metadata.create_all(engine)
+except SQLAlchemyError as exc:
+    print(f"[db] Skipping table creation (database unavailable): {exc}")
 
 
 def save_message(session_id: str, sender: str, message: str) -> None:

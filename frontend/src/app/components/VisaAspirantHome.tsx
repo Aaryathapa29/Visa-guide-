@@ -4,7 +4,7 @@ import type { BrowseView } from "./ui/theme";
 import AspirantNavbar from "./aspirant/AspirantNavbar";
 import CountryBrowseGrid, { BrowseToggle } from "./aspirant/CountryBrowseGrid";
 import ConsultancyBrowseGrid from "./aspirant/ConsultancyBrowseGrid";
-import ChatbotModal from "./aspirant/ChatbotModal";
+import VisaChatbot from "./chatbot/VisaChatbot";
 import BookingModal from "./aspirant/BookingModal";
 import DocumentAnalysisCard from "./aspirant/DocumentAnalysisCard";
 import AccountSettings from "./pages/AccountSettings";
@@ -37,7 +37,7 @@ export default function VisaAspirantHome() {
         onLogout={handleLogout}
       />
 
-      {page === "chat" && <ChatbotModal onClose={() => setPage("home")} />}
+      {page === "chat" && <VisaChatbot onClose={() => setPage("home")} />}
       {page === "document" && <DocumentAnalysisCard onClose={() => setPage("home")} />}
       {page === "settings" && (
         <AccountSettings

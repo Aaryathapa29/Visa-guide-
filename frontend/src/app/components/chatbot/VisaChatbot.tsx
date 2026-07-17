@@ -3,8 +3,10 @@ import Sidebar from "./components/Sidebar";
 import MessageBubble from "./components/MessageBubble";
 import TypingIndicator from "./components/TypingIndicator";
 import UploadPanel from "./components/UploadPanel";
+import Logo from "./components/Logo";
+import CountryTag from "./components/CountryTag";
 import { sendMessage } from "./utils/api";
-import { uid, titleFromText, flagFor } from "./utils/format";
+import { uid, titleFromText } from "./utils/format";
 import { loadConversations, saveConversations, newConversation } from "./utils/storage";
 import { exportMarkdown, exportJSON, copyMarkdown } from "./utils/export";
 import type { Conversation, Message } from "./types";
@@ -137,7 +139,7 @@ export default function VisaChatbot({ onClose }: { onClose: () => void }) {
     } catch (e: unknown) {
       const botMsg: Message = {
         id: uid(), role: "bot",
-        text: `⚠️ ${e instanceof Error ? e.message : "Could not reach the server. Is the backend running?"}`,
+        text: `**Something went wrong.** ${e instanceof Error ? e.message : "Could not reach the server. Is the backend running?"}`,
         ts: Date.now(),
       };
       setConversations((prev) => prev.map((c) =>
@@ -203,8 +205,8 @@ export default function VisaChatbot({ onClose }: { onClose: () => void }) {
           <div className="topbar__spacer" />
 
           <div className="chips">
-            {["🇺🇸 USA", "🇦🇺 Australia", "🇨🇦 Canada"].map((c) => (
-              <span className="chip" key={c}>{c}</span>
+            {["USA", "Australia", "Canada"].map((c) => (
+              <span className="chip" key={c}><CountryTag country={c} /></span>
             ))}
           </div>
 
@@ -224,14 +226,26 @@ export default function VisaChatbot({ onClose }: { onClose: () => void }) {
             {showExport && (
               <div className="menu">
                 <button className="menu__item" onClick={() => doExport("md")}>
-                  📝 Download Markdown <span className="k">.md</span>
+                  <svg className="menu__ic" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" /></svg>
+                  Download Markdown <span className="k">.md</span>
                 </button>
                 <button className="menu__item" onClick={() => doExport("json")}>
-                  🗂️ Download JSON <span className="k">.json</span>
+                  <svg className="menu__ic" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                  Download JSON <span className="k">.json</span>
                 </button>
                 <div className="menu__sep" />
                 <button className="menu__item" onClick={() => doExport("copy")}>
-                  📋 Copy transcript
+                  <svg className="menu__ic" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                  Copy transcript
                 </button>
               </div>
             )}
@@ -242,18 +256,23 @@ export default function VisaChatbot({ onClose }: { onClose: () => void }) {
           <div className="thread">
             {messages.length === 0 ? (
               <div className="welcome">
-                <div className="welcome__badge">🛂</div>
-                <h1>Your student visa assistant</h1>
+                <div className="welcome__mark"><Logo size={58} /></div>
+                <div className="welcome__eyebrow">Visa Guide</div>
+                <h1>Plan your student visa with confidence</h1>
                 <p>
-                  Ask anything about student visas for the <strong>USA</strong>, <strong>Australia</strong>,
-                  and <strong>Canada</strong>. Answers are drawn from up-to-date visa documents and
-                  every fact is cited so you can check the source.
+                  Ask about applications, documents, finances, and work rights for the{" "}
+                  <strong>USA</strong>, <strong>Australia</strong>, and <strong>Canada</strong>.
+                  Every answer is grounded in official guidance and cites the passage it came from.
                 </p>
+                <div className="suggest__label">Try one of these</div>
                 <div className="suggest">
                   {QUICK.map((item) => (
                     <button key={item.q} className="suggest__card" onClick={() => handleSend(item.q)}>
-                      <span className="suggest__flag">{flagFor(item.c)}</span>
-                      {item.q}
+                      <CountryTag country={item.c} />
+                      <span className="suggest__q">{item.q}</span>
+                      <svg className="suggest__go" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
                     </button>
                   ))}
                 </div>

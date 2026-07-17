@@ -201,7 +201,7 @@ export default function ConsultancySignupForm({
           value={licenseNumber}
           onChange={(e: any) => setLicenseNumber(e.target.value)}
           required
-          tooltip="Your government-issued consultancy license number is required for verification. This is reviewed by our compliance team within 24–48 hours."
+          tooltip="Your government-issued consultancy license number is required for verification. This is reviewed by our compliance team within 24-48 hours."
         />
 
         <div

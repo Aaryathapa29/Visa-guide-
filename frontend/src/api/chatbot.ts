@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const CHATBOT_URL = import.meta.env.VITE_CHATBOT_URL || "http://localhost:8001";
+// Chatbot now lives inside the Django backend under /api/chatbot (was a separate
+// FastAPI service on :8001). Override with VITE_CHATBOT_URL if needed.
+const CHATBOT_URL = import.meta.env.VITE_CHATBOT_URL || "http://localhost:8000/api/chatbot";
 
 const ChatbotAPI = axios.create({
   baseURL: CHATBOT_URL,

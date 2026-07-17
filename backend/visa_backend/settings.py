@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     
     # Local apps
     'authentication',
+    'chatbot',
 ]
 
 MIDDLEWARE = [
@@ -143,7 +144,15 @@ AUTH_USER_MODEL = 'authentication.User'
 # Allow your React frontend to connect
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
 ]
+
+# Chatbot / Groq LLM configuration (read from backend/.env).
+# The chatbot app (RAG + embeddings) uses these; see chatbot/services.py.
+GROQ_API_KEY = os.getenv('GROQ_API_KEY')
+GROQ_MODEL = os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')
+GROQ_FALLBACK_MODEL = os.getenv('GROQ_FALLBACK_MODEL', 'llama-3.1-8b-instant')
 
 # Local development email settings: print reset emails to the terminal.
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

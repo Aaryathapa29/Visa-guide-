@@ -147,7 +147,7 @@ export default function AspirantQueueTable() {
                         style={{ background: DARK, color: "#fff" }}
                       >
                         <Check className="w-3.5 h-3.5" />
-                        Confirm at {pickedTime || "—"}
+                        Confirm at {pickedTime || "-"}
                       </button>
                       <button
                         onClick={() => setAssigningId(null)}

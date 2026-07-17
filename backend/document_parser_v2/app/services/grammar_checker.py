@@ -28,7 +28,7 @@ CATEGORY_MAP = {
     "REDUNDANCY": "Sentence Structure",
 }
 
-# LanguageTool doesn't label severity itself — we infer it from the category.
+# LanguageTool doesn't label severity itself, we infer it from the category.
 SEVERITY_MAP = {
     "TYPOS": "Critical",
     "GRAMMAR": "Major",
@@ -54,10 +54,10 @@ IGNORED_WORDS = {
 
 # FIX 2: LanguageTool rule IDs that produce false positives in cover letters
 IGNORED_RULE_IDS = {
-    "ENGLISH_WORD_REPEAT_BEGINNING_RULE",  # "I → Furthermore, I" — normal in cover letters
+    "ENGLISH_WORD_REPEAT_BEGINNING_RULE",  # "I → Furthermore, I", normal in cover letters
     "COMMA_PARENTHESIS_WHITESPACE",        # cosmetic comma rules
     "UPPERCASE_SENTENCE_START",            # false positives on names/addresses
-    "WHITESPACE_RULE",                     # whitespace formatting — not a grammar error
+    "WHITESPACE_RULE",                     # whitespace formatting, not a grammar error
     "DOUBLE_PUNCTUATION",                  # minor punctuation cosmetics
 }
 

@@ -224,7 +224,7 @@ export default function OnboardingWizard() {
                 </div>
               </button>
 
-              {/* Accordion body — two-column text areas */}
+              {/* Accordion body, two-column text areas */}
               {p.expanded && (
                 <div
                   className="px-5 pb-5 grid grid-cols-1 md:grid-cols-2 gap-4"

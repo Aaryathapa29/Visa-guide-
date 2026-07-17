@@ -66,7 +66,7 @@ export default function UploadZone({ onFile, loading }: Props) {
               {dragging ? "Drop your file here" : "Drag & drop your cover letter"}
             </p>
             <p className="text-sm text-slate-600">
-              PDF, DOCX, or TXT — max 5MB
+              PDF, DOCX, or TXT, max 5MB
             </p>
             <button
               type="button"

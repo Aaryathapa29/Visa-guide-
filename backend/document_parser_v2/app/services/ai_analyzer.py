@@ -1,6 +1,6 @@
 """
 app/services/ai_analyzer.py (v3 - Gemini, free tier)
-Uses Google's Gemini API instead of OpenAI — free, no credit card needed
+Uses Google's Gemini API instead of OpenAI, free, no credit card needed
 (1,500 requests/day on gemini-2.5-flash as of mid-2026).
 Get a free key at: https://aistudio.google.com/app/apikey
 """
@@ -19,7 +19,7 @@ MODEL_NAME = "gemini-2.5-flash"
 
 SYSTEM_PROMPT = """You are a visa cover-letter reviewer. You will receive a letter and
 some pre-computed facts (grammar error count already found separately, entity facts).
-Do NOT look for grammar/spelling errors — that's handled elsewhere. Focus only on
+Do NOT look for grammar/spelling errors, that's handled elsewhere. Focus only on
 TONE and VISA PERSUASIVENESS.
 
 Return ONLY valid JSON, no markdown fences, no commentary before or after:
@@ -42,7 +42,7 @@ informal tone for an official document.
 
 
 def _extract_json(raw: str) -> dict:
-    """Gemini sometimes wraps JSON in ```json fences despite instructions — strip them."""
+    """Gemini sometimes wraps JSON in ```json fences despite instructions, strip them."""
     cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip(), flags=re.MULTILINE)
     return json.loads(cleaned)
 

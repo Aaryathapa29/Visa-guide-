@@ -7,3 +7,12 @@ django-jazzmin
 resend
 djangorestframework
 djangorestframework-simplejwt
+
+# Chatbot (RAG) dependencies, merged from ModelInference.
+# Heavy libs (torch comes in via sentence-transformers) load lazily on first
+# chat request, so they do not slow Django startup.
+groq
+chromadb
+sentence-transformers
+pypdf
+numpy

@@ -23,10 +23,10 @@ def analyse_with_spacy(text: str) -> dict:
     tokens = [t for t in doc if not t.is_space]
 
     # Passive voice: spaCy tags passive auxiliaries as "auxpass" (or nsubjpass/aux:pass
-    # depending on model version) — auxpass covers the common case.
+    # depending on model version), auxpass covers the common case.
     passive_count = sum(1 for t in doc if t.dep_ in ("auxpass", "nsubjpass"))
 
-    # Named entities — used to build the visa checklist
+    # Named entities, used to build the visa checklist
     entity_types = sorted({ent.label_ for ent in doc.ents})
     entities_by_type = {}
     for ent in doc.ents:

@@ -1,8 +1,8 @@
 import React, { useRef, useState, useCallback } from 'react'
 import type { Message } from '../types'
-import { flagFor } from '../utils/format'
 import Markdown from './Markdown'
 import SourceBar from './SourceBar'
+import CountryTag from './CountryTag'
 
 export default function MessageBubble({ msg }: { msg: Message }) {
   const isUser = msg.role === 'user'
@@ -27,6 +27,7 @@ export default function MessageBubble({ msg }: { msg: Message }) {
         {isUser ? 'You' : 'VG'}
       </div>
 
+
       <div className={`bubble ${isUser ? 'bubble--user' : 'bubble--bot'}`}>
         {isUser ? (
           msg.text
@@ -35,7 +36,7 @@ export default function MessageBubble({ msg }: { msg: Message }) {
             <Markdown text={msg.text} onCite={handleCite} />
             {msg.country && (
               <span className="bubble__country">
-                {flagFor(msg.country)} Detected topic: {msg.country}
+                <CountryTag country={msg.country} />
               </span>
             )}
             {msg.sources && msg.sources.length > 0 && (

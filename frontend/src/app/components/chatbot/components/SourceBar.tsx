@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import type { Source } from '../types'
-import { flagFor } from '../utils/format'
+import CountryTag from './CountryTag'
 
 interface Props {
   sources:     Source[]
@@ -45,10 +45,11 @@ export default function SourceBar({ sources, highlighted, registerRef }: Props) 
               <button className="source__btn" onClick={() => toggle(s.n)}>
                 <span className="source__n">{s.n}</span>
                 <span style={{ minWidth: 0, flex: 1 }}>
-                  <div className="source__title">
-                    {flagFor(s.country)} {s.title}
+                  <div className="source__title">{s.title}</div>
+                  <div className="source__meta">
+                    <CountryTag country={s.country} />
+                    <span className="source__file">{s.source}</span>
                   </div>
-                  <div className="source__meta">{s.source}</div>
                 </span>
                 <span className="source__score">{Math.round(s.score * 100)}%</span>
                 <svg className="source__chevron" data-open={isOpen} width="14" height="14"

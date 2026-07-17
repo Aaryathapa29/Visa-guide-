@@ -87,7 +87,7 @@ export default function DocumentParser({ onClose }: { onClose: () => void }) {
       {/* Error */}
       {error && (
         <div className="rounded-lg p-4 text-sm font-medium bg-red-50 text-red-700">
-          ❌ {error} — make sure the parser backend is running on port 8002 and LanguageTool/Docker is available if you want full grammar checks.
+          ❌ {error}, make sure the parser backend is running on port 8002 and LanguageTool/Docker is available if you want full grammar checks.
         </div>
       )}
     </div>

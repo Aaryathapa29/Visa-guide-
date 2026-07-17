@@ -1,0 +1,6 @@
+# ChromaDB vector store — derived data, rebuilt locally from data/ on first use.
+# Never commit it: a store written by one ChromaDB version fails to load on another.
+chroma_db/
+
+# Log file written by the chatbot logger
+app.log

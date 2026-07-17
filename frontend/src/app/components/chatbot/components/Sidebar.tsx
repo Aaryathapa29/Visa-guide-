@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Conversation } from '../types'
-import { timeAgo } from '../utils/format'
+import Logo from './Logo'
 
 interface Props {
   conversations: Conversation[]
@@ -23,7 +23,7 @@ export default function Sidebar({
       />
       <aside className={`sidebar ${open ? '' : 'sidebar--closed'}`}>
         <div className="sidebar__brand">
-          <div className="sidebar__logo">🛂</div>
+          <Logo size={38} />
           <div>
             <div className="sidebar__title">Visa Guide</div>
             <div className="sidebar__sub">Student visa assistant</div>
@@ -63,15 +63,17 @@ export default function Sidebar({
                 title="Delete conversation"
                 onClick={e => { e.stopPropagation(); onDelete(c.id) }}
               >
-                ✕
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" /></svg>
               </span>
             </button>
           ))}
         </div>
 
         <div className="sidebar__foot">
-          <b>LLM-based RAG</b> · Groq + sentence-transformers<br />
-          Covers <b>🇺🇸 USA</b> · <b>🇦🇺 Australia</b> · <b>🇨🇦 Canada</b>
+          <b>Retrieval-grounded answers</b><br />
+          Covers <b>USA</b>, <b>Australia</b>, and <b>Canada</b>
         </div>
       </aside>
     </>

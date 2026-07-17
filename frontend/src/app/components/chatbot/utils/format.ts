@@ -3,13 +3,22 @@
 export const uid = (): string =>
   Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
 
-/** Flag emoji for a country name (used in badges/source chips). */
-export function flagFor(country?: string): string {
+export interface CountryMeta {
+  label: string
+  short: string
+  color: string
+}
+
+/**
+ * Design metadata for a country: an accent color and labels. Used by the
+ * CountryTag component so we can show a coloured dot instead of a flag emoji.
+ */
+export function countryMeta(country?: string): CountryMeta {
   switch ((country ?? '').toLowerCase()) {
-    case 'usa':       return '🇺🇸'
-    case 'australia': return '🇦🇺'
-    case 'canada':    return '🇨🇦'
-    default:          return '🌐'
+    case 'usa':       return { label: 'USA',       short: 'US', color: '#3B6FE0' }
+    case 'australia': return { label: 'Australia', short: 'AU', color: '#12967E' }
+    case 'canada':    return { label: 'Canada',    short: 'CA', color: '#D0433B' }
+    default:          return { label: country || 'General', short: 'GN', color: '#8A8577' }
   }
 }
 

@@ -1,5 +1,4 @@
 import type { Conversation } from '../types'
-import { flagFor } from './format'
 
 /** Trigger a browser download of a text blob. */
 function download(filename: string, content: string, mime: string): void {
@@ -32,12 +31,12 @@ export function conversationToMarkdown(convo: Conversation): string {
 
   for (const m of convo.messages) {
     if (m.role === 'user') {
-      lines.push(`### 🧑 You`)
+      lines.push(`### You`)
       lines.push('')
       lines.push(m.text.trim())
     } else {
-      const flag = m.country ? ` ${flagFor(m.country)} ${m.country}` : ''
-      lines.push(`### 🤖 Visa Guide${flag}`)
+      const topic = m.country ? ` (${m.country})` : ''
+      lines.push(`### Visa Guide${topic}`)
       lines.push('')
       lines.push(m.text.trim())
       if (m.sources && m.sources.length) {

@@ -35,9 +35,6 @@ frontend/.env.*
 **/.env.*
 **/.env.local
 **/.env.*.local
-backend/.env.example
-frontend/.env.example
-.env.example
 **/.env.development
 **/.env.development.local
 **/.env.production

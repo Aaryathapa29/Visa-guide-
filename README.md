@@ -160,6 +160,8 @@ python -m venv .venv
 source .venv/Scripts/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+docker compose up -d
 uvicorn main:app --reload --port 8002
 ```
 
@@ -171,8 +173,12 @@ py -3.11 -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+docker compose up -d
 uvicorn main:app --reload --port 8002
 ```
+
+The parser service depends on a local LanguageTool server. Run `docker compose up -d` from `backend/document_parser_v2` before starting the Python API, then open `http://localhost:8010` to verify LanguageTool is running.
 
 ### Frontend
 

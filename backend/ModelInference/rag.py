@@ -25,6 +25,11 @@ from pypdf import PdfReader
 from sentence_transformers import SentenceTransformer
 import chromadb
 from chromadb.config import Settings
+from logger import logger
+
+logger.info("Generating embeddings...")
+logger.info("Searching ChromaDB...")
+logger.info("Calling Groq...")
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 BASE_DIR      = Path(__file__).parent

@@ -22,7 +22,7 @@ Check it's running: open http://localhost:8010 in your browser — you should se
 
 ### 3. Set up the Python backend
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 cp .env.example .env
 ```
@@ -30,14 +30,14 @@ Open `.env` and paste your OpenAI key (only needed for the tone/visa-persuasiven
 
 ### 4. Run the API
 ```bash
-uvicorn main:app --reload --port 8001
+uvicorn main:app --reload --port 8002
 ```
 
 ### 5. Test it
 ```
-GET http://localhost:8001/api/v1/analyze/demo
+GET http://localhost:8002/api/v1/analyze/demo
 ```
-or open http://localhost:8001/docs for the interactive Swagger UI.
+or open http://localhost:8002/docs for the interactive Swagger UI.
 
 ## Folder structure
 ```

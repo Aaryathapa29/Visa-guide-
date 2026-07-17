@@ -80,6 +80,9 @@ export default function AspirantSignupForm({
 
       const response = await API.post("auth/register/", {
         username: usernameValue,
+        first_name: fullName,
+        full_name: fullName,
+        fullName: fullName,
         email: email,
         password: password,
         role: "student",

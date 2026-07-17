@@ -55,6 +55,7 @@ from django.utils import timezone
 from django.utils.http import urlsafe_base64_decode
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 
 from .models import LoginHistory, User
@@ -62,20 +63,40 @@ from .models import LoginHistory, User
 UserModel = get_user_model()
 
 class RegisterSerializer(serializers.ModelSerializer):
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    full_name = serializers.CharField(required=False, allow_blank=True)
+    fullName = serializers.CharField(required=False, allow_blank=True)
     license_number = serializers.CharField(required=False, allow_blank=True)
     office_name = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password', 'role', 'license_number', 'office_name')
+        fields = (
+            'id',
+            'username',
+            'first_name',
+            'full_name',
+            'fullName',
+            'email',
+            'password',
+            'role',
+            'license_number',
+            'office_name',
+        )
         extra_kwargs = {
             'password': {'write_only': True}
         }
 
     def validate_email(self, value):
-        if User.objects.filter(email__iexact=value).exists():
+        normalized_email = value.strip()
+
+        if User.objects.filter(email__iexact=normalized_email).exists():
             raise serializers.ValidationError('An account with this email already exists.')
-        return value
+
+        if not normalized_email.lower().endswith('@gmail.com'):
+            raise serializers.ValidationError('Registration is only permitted using a valid Gmail account.')
+
+        return normalized_email
 
     def validate_password(self, value):
         validate_password(value)
@@ -97,9 +118,12 @@ class RegisterSerializer(serializers.ModelSerializer):
                 'office_name': 'Office name is required for consultancy accounts.',
             })
 
+        first_name = validated_data.get('first_name') or validated_data.get('full_name') or validated_data.get('fullName') or ''
+
         # Create your custom user record using Django's standard manager method
         user = User.objects.create_user(
             username=validated_data['username'],
+            first_name=first_name,
             email=validated_data['email'],
             password=validated_data['password'],
             role=role,
@@ -118,6 +142,10 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
+    display_name = serializers.SerializerMethodField()
+    full_name = serializers.SerializerMethodField()
+    fullName = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = (
@@ -129,8 +157,29 @@ class UserSerializer(serializers.ModelSerializer):
             'is_verified',
             'license_number',
             'office_name',
+            'display_name',
+            'full_name',
+            'fullName',
             'date_joined',
             'last_login',
+        )
+
+    def get_display_name(self, obj):
+        return self._resolve_name(obj)
+
+    def get_full_name(self, obj):
+        return self._resolve_name(obj)
+
+    def get_fullName(self, obj):
+        return self._resolve_name(obj)
+
+    def _resolve_name(self, obj):
+        return (
+            obj.first_name or
+            getattr(obj, 'office_name', None) or
+            obj.username or
+            obj.email or
+            ''
         )
 
 
@@ -153,7 +202,7 @@ class LoginSerializer(serializers.Serializer):
         password = attrs.get('password')
         role = attrs.get('role')
 
-        candidates = User.objects.filter(email__iexact=email, role=role)
+        candidates = User.objects.filter(email__iexact=email, role=role, is_active=True)
 
         if not candidates.exists():
             raise serializers.ValidationError({'detail': 'Invalid email or password.'})
@@ -182,21 +231,30 @@ class LoginSerializer(serializers.Serializer):
                 user_agent=request.META.get('HTTP_USER_AGENT', ''),
             )
 
-        refresh = RefreshToken.for_user(user)
+        # Use CustomTokenObtainPairSerializer to include role in token
+        refresh = CustomTokenObtainPairSerializer.get_token(user)
+
+        display_name = (
+            user.first_name or
+            getattr(user, 'office_name', None) or
+            user.username or
+            user.email or
+            ''
+        )
+        serialized_user = UserSerializer(user).data
+
+        # When the user object is sent to the frontend, ensure a consistent name
+        # field exists for the profile dropdown.
+        serialized_user.update({
+            'display_name': display_name,
+            'full_name': display_name,
+            'fullName': display_name,
+        })
 
         return {
             'refresh': str(refresh),
             'access': str(refresh.access_token),
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'first_name': user.first_name,
-                'email': user.email,
-                'role': user.role,
-                'is_verified': user.is_verified,
-                'office_name': getattr(user, 'office_name', None),
-                'last_login': user.last_login,
-            },
+            'user': serialized_user,
         }
 
 
@@ -223,3 +281,15 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
         attrs['user'] = user
         return attrs
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """Custom JWT serializer that includes the user role in token claims"""
+    
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Add custom claims to the token
+        token['role'] = getattr(user, 'role', 'student')
+        token['user_id'] = str(user.id)
+        return token

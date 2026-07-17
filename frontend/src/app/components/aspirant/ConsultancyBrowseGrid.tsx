@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Building2, Search, Loader2, AlertCircle, ArrowRight, Mail, MapPin } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import API from "../../../api";
 
 type Consultancy = {
@@ -9,9 +10,33 @@ type Consultancy = {
   office_name: string | null;
 };
 
+function cleanDisplayName(value: string | null | undefined) {
+  const raw = (value || "").trim();
+  if (!raw) return "";
+
+  const withoutSlug = raw.replace(/_agency$/i, "");
+  const normalized = withoutSlug
+    .replace(/[_-]+/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .trim();
+
+  if (!normalized) return "";
+
+  return normalized.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function getSearchableText(consultancy: Consultancy) {
+  const displayName = cleanDisplayName(consultancy.office_name || consultancy.username);
+  return [displayName, cleanDisplayName(consultancy.username), consultancy.email, consultancy.office_name || ""]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
 export default function ConsultancyBrowseGrid() {
   const [consultancies, setConsultancies] = useState<Consultancy[]>([]);
   const [search, setSearch] = useState("");
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -53,12 +78,8 @@ export default function ConsultancyBrowseGrid() {
     if (!query) return consultancies;
 
     return consultancies.filter((consultancy) => {
-      const officeName = consultancy.office_name || "";
-      return (
-        consultancy.username.toLowerCase().includes(query) ||
-        consultancy.email.toLowerCase().includes(query) ||
-        officeName.toLowerCase().includes(query)
-      );
+      const searchableText = getSearchableText(consultancy);
+      return searchableText.includes(query);
     });
   }, [consultancies, search]);
 
@@ -121,22 +142,27 @@ export default function ConsultancyBrowseGrid() {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {filteredConsultancies.map((consultancy) => (
-              <button
-                key={consultancy.id}
-                type="button"
-                onClick={() => {
-                  window.location.href = `/consultancies/${consultancy.id}`;
-                }}
-                className="group overflow-hidden border border-slate-200 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:border-[#0a1f44] hover:shadow-[0_20px_50px_-20px_rgba(10,31,68,.35)]"
-              >
-                <div className="bg-gradient-to-br from-[#071735] to-[#17366a] p-6 text-white">
-                  <div className="flex items-start justify-between gap-3"><div><h3 className="aspirant-serif text-2xl leading-tight">{consultancy.office_name || consultancy.username}</h3><p className="mt-1 text-sm text-white/75">@{consultancy.username}</p></div><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-[#f97316]"><Building2 className="h-5 w-5" /></span></div>
-                </div>
-                <div className="p-6"><p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Consultancy profile</p><div className="mt-4 space-y-3 text-sm text-slate-600"><p className="flex items-center gap-2 break-all"><Mail className="h-4 w-4 shrink-0 text-[#0a1f44]" />{consultancy.email}</p><p className="flex items-center gap-2"><MapPin className="h-4 w-4 shrink-0 text-[#0a1f44]" />{consultancy.office_name || "Office details not provided"}</p></div><div className="mt-6 flex items-center justify-end border-t border-slate-200 pt-4 text-[11px] font-bold uppercase tracking-widest text-[#0a1f44] transition-all group-hover:text-[#f97316]">View profile <ArrowRight className="ml-1 h-4 w-4" /></div>
-                </div>
-              </button>
-            ))}
+            {filteredConsultancies.map((consultancy) => {
+              const displayName = cleanDisplayName(consultancy.office_name || consultancy.username);
+              const fallbackName = displayName || cleanDisplayName(consultancy.username) || "Consultancy";
+
+              return (
+                <button
+                  key={consultancy.id}
+                  type="button"
+                  onClick={() => {
+                    navigate(`/consultancies/${consultancy.id}`);
+                  }}
+                  className="group overflow-hidden border border-slate-200 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:border-[#0a1f44] hover:shadow-[0_20px_50px_-20px_rgba(10,31,68,.35)]"
+                >
+                  <div className="bg-gradient-to-br from-[#071735] to-[#17366a] p-6 text-white">
+                    <div className="flex items-start justify-between gap-3"><div><h3 className="aspirant-serif text-2xl leading-tight">{fallbackName}</h3><p className="mt-1 text-sm text-white/75">@{consultancy.username}</p></div><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10 text-[#f97316]"><Building2 className="h-5 w-5" /></span></div>
+                  </div>
+                  <div className="p-6"><p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Consultancy profile</p><div className="mt-4 space-y-3 text-sm text-slate-600"><p className="flex items-center gap-2 break-all"><Mail className="h-4 w-4 shrink-0 text-[#0a1f44]" />{consultancy.email}</p><p className="flex items-center gap-2"><MapPin className="h-4 w-4 shrink-0 text-[#0a1f44]" />{consultancy.office_name || "Office details not provided"}</p></div><div className="mt-6 flex items-center justify-end border-t border-slate-200 pt-4 text-[11px] font-bold uppercase tracking-widest text-[#0a1f44] transition-all group-hover:text-[#f97316]">View profile <ArrowRight className="ml-1 h-4 w-4" /></div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

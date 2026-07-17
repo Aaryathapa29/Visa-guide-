@@ -13,4 +13,44 @@ const API = axios.create({
   baseURL: base,
 });
 
+function getStoredToken() {
+  if (typeof window === "undefined") return "";
+
+  const candidates = [
+    window.localStorage.getItem("accessToken"),
+    window.localStorage.getItem("access_token"),
+    window.sessionStorage.getItem("accessToken"),
+    window.sessionStorage.getItem("access_token"),
+  ];
+
+  return candidates.find((value) => Boolean(value)) || "";
+}
+
+function isPublicEndpoint(url: string = "") {
+  const normalized = url.split("?")[0].replace(/^\/+/, "").toLowerCase();
+  const publicSegments = ["login", "signup", "register", "password-reset", "check-email"];
+
+  return publicSegments.some((segment) => normalized.includes(segment));
+}
+
+API.interceptors.request.use((config) => {
+  const requestUrl = typeof config.url === "string" ? config.url : "";
+
+  if (!isPublicEndpoint(requestUrl)) {
+    const token = getStoredToken();
+    if (token) {
+      if (typeof config.headers?.set === "function") {
+        config.headers.set("Authorization", `Bearer ${token}`);
+      } else {
+        config.headers = {
+          ...(config.headers || {}),
+          Authorization: `Bearer ${token}`,
+        };
+      }
+    }
+  }
+
+  return config;
+});
+
 export default API;

@@ -144,6 +144,7 @@ AUTH_USER_MODEL = 'authentication.User'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 ]
+CORS_ALLOW_CREDENTIALS = True
 
 # Local development email settings: print reset emails to the terminal.
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
@@ -155,4 +156,9 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
+}
+
+# Configure Simple JWT to include custom claims (like role)
+SIMPLE_JWT = {
+    'TOKEN_OBTAIN_SERIALIZER': 'authentication.serializers.CustomTokenObtainPairSerializer',
 }

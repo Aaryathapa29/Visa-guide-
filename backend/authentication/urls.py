@@ -12,7 +12,7 @@ from .views import (
     UpdateProfileView,
     DeleteAccountView,
     log_consultancy_visit,
-    get_consultancy_notifications,
+    ConsultancyNotificationsView,
 )
 
 urlpatterns = [
@@ -38,5 +38,5 @@ urlpatterns = [
     path('update-profile/', UpdateProfileView.as_view(), name='update_profile'),
     path('delete-account/', DeleteAccountView.as_view(), name='delete_account'),
     path('log-visit/', log_consultancy_visit, name='log_visit'),
-    path('notifications/', get_consultancy_notifications, name='notifications'),
+    path('notifications/', ConsultancyNotificationsView.as_view(), name='notifications'),
 ]

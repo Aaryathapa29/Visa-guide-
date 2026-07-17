@@ -38,6 +38,28 @@ export default function ProfileDropdown({
     onLogoutClick();
   };
 
+  const resolvedName = userName || (() => {
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (!raw) return "";
+      const u = JSON.parse(raw);
+
+      return (
+        u.fullName ||
+        u.full_name ||
+        u.displayName ||
+        u.display_name ||
+        u.first_name ||
+        u.office_name ||
+        u.username ||
+        u.email ||
+        ""
+      ).toString().trim();
+    } catch {
+      return "";
+    }
+  })();
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -51,10 +73,10 @@ export default function ProfileDropdown({
 
       {isOpen && (
         <div className="absolute right-0 top-12 z-50 w-48 rounded-lg border border-slate-200 bg-white shadow-lg">
-          {userName && (
+          {resolvedName && (
             <div className="border-b border-slate-100 px-4 py-3">
               <p className="text-xs text-slate-600">Signed in as</p>
-              <p className="truncate text-sm font-semibold text-[#0a1f44]">{userName}</p>
+              <p className="truncate text-sm font-semibold text-[#0a1f44]">{resolvedName}</p>
             </div>
           )}
 

@@ -4,9 +4,13 @@ import ConsultancyNavbar from "./consultancy/ConsultancyNavbar";
 import OnboardingWizard from "./consultancy/OnboardingWizard";
 import ConsultancyChatPanel from "./consultancy/ConsultancyChatPanel";
 import AspirantQueueTable from "./consultancy/AspirantQueueTable";
+import AccountSettings from "./pages/AccountSettings";
+
+type Page = "dashboard" | "settings";
 
 export default function ConsultancyHome() {
   const [activeTab, setActiveTab] = useState<ConsultancyTab>("profile");
+  const [page, setPage] = useState<Page>("dashboard");
 
   useEffect(() => {
     try {
@@ -39,9 +43,46 @@ export default function ConsultancyHome() {
     window.location.reload();
   }
 
+  const userName = (() => {
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (!raw) return "";
+      const u = JSON.parse(raw);
+      return u.username || u.first_name || u.email || "";
+    } catch (e) {
+      return "";
+    }
+  })();
+  const consultancyName = (() => {
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (!raw) return "";
+      const u = JSON.parse(raw);
+      return u.office_name || u.username || u.email || "";
+    } catch (e) {
+      return "";
+    }
+  })();
+
+  if (page === "settings") {
+    return (
+      <AccountSettings
+        userRole="consultancy"
+        userName={consultancyName || userName}
+        onBack={() => setPage("dashboard")}
+        onAccountDeleted={handleLogout}
+      />
+    );
+  }
+
   return (
     <div className="aspirant-shell min-h-screen">
-      <ConsultancyNavbar activeTab={activeTab} onTabChange={setActiveTab} onLogout={handleLogout} />
+      <ConsultancyNavbar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onOpenSettings={() => setPage("settings")}
+        onLogout={handleLogout}
+      />
 
       <main className="mx-auto max-w-6xl px-6 py-12 md:px-12">
         {/* Greeting */}

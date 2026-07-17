@@ -1,17 +1,11 @@
-import { useRef, useState } from "react";
-import { ArrowLeft, FileText, Sparkles, Upload } from "lucide-react";
-
-const feedback = [
-  ["Needs attention", "Opening paragraph lacks a clear statement of purpose for the visa application.", "text-red-800 bg-red-50 border-red-200"],
-  ["Improve", "Financial evidence could be strengthened with specific figures.", "text-amber-800 bg-amber-50 border-amber-200"],
-  ["Strong", "Ties to home country are clearly articulated.", "text-green-800 bg-green-50 border-green-200"],
-];
+import { ArrowLeft } from "lucide-react";
+import DocumentParser from "../Documentparser/DocumentParser";
 
 export default function DocumentAnalysisCard({ onClose }: { onClose: () => void }) {
-  const [uploaded, setUploaded] = useState(false);
-  const fileInput = useRef<HTMLInputElement>(null);
   return <main className="aspirant-shell min-h-[calc(100vh-4rem)]">
     <section className="aspirant-hero relative flex min-h-[42vh] items-end overflow-hidden border-b border-white/10 text-white"><div className="relative mx-auto w-full max-w-6xl px-6 py-12"><button onClick={onClose} className="mb-8 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/75 hover:text-[#f97316]"><ArrowLeft className="h-4 w-4" />Back to explore</button><p className="text-[11px] font-semibold uppercase tracking-[.25em] text-[#f97316]">AI Toolkit</p><h1 className="aspirant-serif mt-3 text-4xl leading-tight tracking-tight md:text-6xl">Document <span className="italic text-[#f97316]">Analyser.</span></h1><div className="mt-6 h-0.5 w-16 bg-[#f97316]" /></div></section>
-    <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6">{!uploaded ? <div onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); setUploaded(true); }} onClick={() => fileInput.current?.click()} className="cursor-pointer border border-dashed border-slate-300 bg-white p-10 text-center shadow-[0_4px_20px_-8px_rgba(10,31,68,.18)]"><input ref={fileInput} onChange={() => setUploaded(true)} type="file" className="hidden" accept=".pdf,.doc,.docx,.txt,image/*" /><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-slate-100 text-[#0a1f44]"><FileText className="h-6 w-6" /></span><h2 className="aspirant-serif mt-5 text-2xl text-[#0a1f44]">Upload a document to analyse</h2><p className="mx-auto mt-2 max-w-lg text-sm text-slate-600">Drop a PDF or image of your SOP, LOR, bank statement or I-20 and we'll flag missing fields, tone and required signatures.</p><button type="button" className="mt-6 inline-flex items-center gap-2 bg-[#f97316] px-6 py-3 text-xs font-bold uppercase tracking-widest text-white"><Upload className="h-4 w-4" />Choose file</button><p className="mt-4 text-[10px] uppercase tracking-widest text-slate-500">PDF, DOCX, TXT or image</p></div> : <div className="space-y-5"><div className="flex items-center justify-between border border-slate-200 bg-white p-5 shadow-[0_4px_20px_-8px_rgba(10,31,68,.18)]"><div className="flex items-center gap-3"><FileText className="h-6 w-6 text-[#f97316]" /><div><p className="font-semibold text-[#0a1f44]">visa_document.pdf</p><p className="text-xs text-slate-500">Analysed just now</p></div></div><button onClick={() => setUploaded(false)} className="text-sm text-slate-500 hover:text-[#0a1f44]">Remove</button></div><section className="border border-slate-200 bg-white p-6 shadow-[0_4px_20px_-8px_rgba(10,31,68,.18)]"><h2 className="aspirant-serif text-2xl text-[#0a1f44]">Analysis results</h2><div className="mt-5 space-y-3">{feedback.map(([label, text, classes]) => <div key={label} className={`border p-4 ${classes}`}><p className="text-xs font-bold uppercase tracking-wider">{label}</p><p className="mt-1 text-sm">{text}</p></div>)}</div><div className="mt-5 flex gap-3 border-t border-slate-200 pt-5 text-[#0a1f44]"><Sparkles className="h-5 w-5 shrink-0 text-[#f97316]" /><p className="text-sm">Overall score: <strong>72 / 100</strong> — good foundation. Address the flagged items to strengthen your application.</p></div></section></div>}</div>
+    <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6">
+      <DocumentParser onClose={onClose} />
+    </div>
   </main>;
 }

@@ -4,7 +4,7 @@ frontend/dist/
 frontend/.vite/
 frontend/.cache/
 frontend/*.tsbuildinfo
-\.venv/
+.venv/
 backend/.venv/
 backend/venv/
 backend/ModelInference/.venv/
@@ -19,31 +19,26 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-# Local environment files
+
+# Local environment files and secrets
 .env
 .env.*
+*.env
+*.env.*
+.env.local
+.env.*.local
 backend/.env
 backend/.env.*
 frontend/.env
 frontend/.env.*
+**/.env
+**/.env.*
 **/.env.local
-backend/.env.example
-frontend/.env.example
-.env.example
+**/.env.*.local
 **/.env.development
 **/.env.development.local
 **/.env.production
 **/.env.production.local
-venv/
-dist/
-build/
-.DS_Store
-
-# Local databases and dumps
-*.sqlite
-*.sqlite3
-*.db
-*.sql
 
 # Secrets and credentials
 *.pem
@@ -54,15 +49,30 @@ build/
 *.p12
 *.jks
 *.keystore
+*.token
+*.tokens
+*.secret
+*.secrets
 id_rsa
 id_dsa
 id_ecdsa
 id_ed25519
 
+# Local databases and dumps
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+backend/**/*.sqlite3
+backend/**/*.db
+backend/**/db.sqlite3
+
 # Logs and runtime artifacts
 *.log
 logs/
 *.pid
+*.tmp
+*.bak
 
 # Coverage and test outputs
 .coverage
@@ -78,3 +88,6 @@ coverage/
 *.userossc
 *.sln.docstates
 Thumbs.db
+
+# OS files
+.DS_Store

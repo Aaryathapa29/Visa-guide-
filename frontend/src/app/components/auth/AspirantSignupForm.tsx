@@ -13,6 +13,7 @@ export default function AspirantSignupForm({
 }) {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [emailCheckLoading, setEmailCheckLoading] = useState(false);
 
   // Form input states
   const [fullName, setFullName] = useState("");
@@ -23,12 +24,49 @@ export default function AspirantSignupForm({
   // Status states
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  async function checkEmailExists(emailValue: string) {
+    if (!emailValue || !emailValue.includes("@")) return;
+    
+    setEmailCheckLoading(true);
+    setEmailError("");
+    try {
+      const response = await API.post("auth/check-email/", { email: emailValue });
+      if (response.data.exists) {
+        setEmailError("This email is already registered. Please use a different email or sign in.");
+      }
+    } catch (err: any) {
+      // If endpoint doesn't exist, we'll catch it during submission
+      console.log("Email check not available, will validate on submit");
+    } finally {
+      setEmailCheckLoading(false);
+    }
+  }
+
+  function handleEmailChange(e: any) {
+    const newEmail = e.target.value;
+    setEmail(newEmail);
+    setEmailError("");
+    
+    // Check email after user stops typing (debounced)
+    const timer = setTimeout(() => {
+      checkEmailExists(newEmail);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setMessage("");
+
+    if (emailError) {
+      setError("Please resolve the email issue before continuing.");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
@@ -52,7 +90,10 @@ export default function AspirantSignupForm({
         setTimeout(() => onSignIn(), 2000); // Send to sign in page automatically after 2 seconds
       }
     } catch (err: any) {
-      if (err.response?.data) {
+      if (err.response?.status === 400 && err.response?.data?.email) {
+        setEmailError("This email is already registered.");
+        setError("Email already in use. Please use a different email or sign in.");
+      } else if (err.response?.data) {
         setError(Object.values(err.response.data).flat().join(" "));
       } else {
         setError("Unable to connect to the registration server.");
@@ -100,16 +141,28 @@ export default function AspirantSignupForm({
           onChange={(e: any) => setFullName(e.target.value)}
           required
         />
-        <InputField
-          id="email"
-          label="Email Address"
-          type="email"
-          placeholder="you@example.com"
-          icon={<Mail className="w-4 h-4" />}
-          value={email}
-          onChange={(e: any) => setEmail(e.target.value)}
-          required
-        />
+        <div>
+          <InputField
+            id="email"
+            label="Email Address"
+            type="email"
+            placeholder="you@example.com"
+            icon={<Mail className="w-4 h-4" />}
+            value={email}
+            onChange={handleEmailChange}
+            required
+          />
+          {emailError && (
+            <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1">
+              ⚠️ {emailError}
+            </p>
+          )}
+          {emailCheckLoading && (
+            <p className="mt-1.5 text-xs text-blue-600">
+              Checking availability...
+            </p>
+          )}
+        </div>
         <InputField
           id="password"
           label="Password"

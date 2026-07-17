@@ -122,6 +122,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             'id',
+            'first_name',
             'username',
             'email',
             'role',
@@ -189,9 +190,11 @@ class LoginSerializer(serializers.Serializer):
             'user': {
                 'id': user.id,
                 'username': user.username,
+                'first_name': user.first_name,
                 'email': user.email,
                 'role': user.role,
                 'is_verified': user.is_verified,
+                'office_name': getattr(user, 'office_name', None),
                 'last_login': user.last_login,
             },
         }

@@ -11,6 +11,7 @@ Public LanguageTool API (free tier, rate-limited, fine for early testing):
     LT_API_URL=https://api.languagetool.org/v2/check
 """
 import os
+import re
 import uuid
 import httpx
 
@@ -61,6 +62,55 @@ IGNORED_RULE_IDS = {
 }
 
 
+def build_fallback_grammar_errors(text: str, reason: str | None = None) -> list[dict]:
+    """Provide a basic, local fallback when LanguageTool is unavailable."""
+    errors: list[dict] = []
+    if not text or not text.strip():
+        return errors
+
+    if re.search(r"\s{2,}", text):
+        errors.append({
+            "id": str(uuid.uuid4())[:8],
+            "type": "Punctuation",
+            "severity": "Minor",
+            "original": "double spaces",
+            "suggestion": "Use a single space between words.",
+            "explanation": "Extra spacing was detected in the text.",
+        })
+
+    if re.search(r"\b([A-Za-z]+)\s+\1\b", text, re.IGNORECASE):
+        errors.append({
+            "id": str(uuid.uuid4())[:8],
+            "type": "Word Choice",
+            "severity": "Minor",
+            "original": "repeated word",
+            "suggestion": "Remove the duplicate word or rephrase the sentence.",
+            "explanation": "A repeated word was detected in the text.",
+        })
+
+    if re.search(r"[A-Za-z]{20,}", text) and not re.search(r"[.!?]\s+[A-Z]", text):
+        errors.append({
+            "id": str(uuid.uuid4())[:8],
+            "type": "Punctuation",
+            "severity": "Major",
+            "original": "long sentence",
+            "suggestion": "Split the sentence or add clearer punctuation.",
+            "explanation": "The text contains a long sentence that may benefit from clearer punctuation.",
+        })
+
+    if not errors and reason:
+        errors.append({
+            "id": str(uuid.uuid4())[:8],
+            "type": "Grammar",
+            "severity": "Minor",
+            "original": "grammar engine unavailable",
+            "suggestion": "Review the text manually or reconnect LanguageTool.",
+            "explanation": f"The grammar engine could not run: {reason}",
+        })
+
+    return errors
+
+
 async def check_grammar(text: str, language: str = "en-US") -> list[dict]:
     """Sends text to LanguageTool and returns a normalized error list."""
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -71,7 +121,7 @@ async def check_grammar(text: str, language: str = "en-US") -> list[dict]:
             )
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            raise RuntimeError(f"LanguageTool request failed: {exc}")
+            return build_fallback_grammar_errors(text, str(exc))
 
         data = response.json()
 

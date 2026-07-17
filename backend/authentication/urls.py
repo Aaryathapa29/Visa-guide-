@@ -8,6 +8,11 @@ from .views import (
     RegisterView,
     users_list,
     login_history,
+    CheckEmailView,
+    UpdateProfileView,
+    DeleteAccountView,
+    log_consultancy_visit,
+    get_consultancy_notifications,
 )
 
 urlpatterns = [
@@ -27,4 +32,11 @@ urlpatterns = [
     # Password reset flow for React frontend
     path('password-reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+
+    # Profile management endpoints
+    path('check-email/', CheckEmailView.as_view(), name='check_email'),
+    path('update-profile/', UpdateProfileView.as_view(), name='update_profile'),
+    path('delete-account/', DeleteAccountView.as_view(), name='delete_account'),
+    path('log-visit/', log_consultancy_visit, name='log_visit'),
+    path('notifications/', get_consultancy_notifications, name='notifications'),
 ]

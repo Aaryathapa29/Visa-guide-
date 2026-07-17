@@ -4,16 +4,18 @@ import type { BrowseView } from "./ui/theme";
 import AspirantNavbar from "./aspirant/AspirantNavbar";
 import CountryBrowseGrid, { BrowseToggle } from "./aspirant/CountryBrowseGrid";
 import ConsultancyBrowseGrid from "./aspirant/ConsultancyBrowseGrid";
-import ChatbotModal from "./aspirant/ChatbotModal";
+import VisaChatbot from "./chatbot/VisaChatbot";
 import BookingModal from "./aspirant/BookingModal";
 import DocumentAnalysisCard from "./aspirant/DocumentAnalysisCard";
+import AccountSettings from "./pages/AccountSettings";
 
 type Modal = "booking" | null;
+type Page = "home" | "chat" | "document" | "settings";
 
 export default function VisaAspirantHome() {
   const [modal, setModal] = useState<Modal>(null);
   const [browseView, setBrowseView] = useState<BrowseView>("consultancies");
-  const [page, setPage] = useState<"home" | "chat" | "document">("home");
+  const [page, setPage] = useState<Page>("home");
 
   function handleLogout() {
     localStorage.removeItem("accessToken");
@@ -23,15 +25,28 @@ export default function VisaAspirantHome() {
     window.location.reload();
   }
 
+  const userName = localStorage.getItem("authUser")
+    ? JSON.parse(localStorage.getItem("authUser") || "{}").email
+    : "";
+
   return (
     <div className="min-h-screen" style={{ background: "#f0f4f8" }}>
       <AspirantNavbar
         onOpenDocAnalysis={() => setPage("document")}
+        onOpenSettings={() => setPage("settings")}
         onLogout={handleLogout}
       />
 
-      {page === "chat" && <ChatbotModal onClose={() => setPage("home")} />}
+      {page === "chat" && <VisaChatbot onClose={() => setPage("home")} />}
       {page === "document" && <DocumentAnalysisCard onClose={() => setPage("home")} />}
+      {page === "settings" && (
+        <AccountSettings
+          userRole="aspirant"
+          userName={userName}
+          onBack={() => setPage("home")}
+          onAccountDeleted={handleLogout}
+        />
+      )}
 
       {page === "home" && <>
 

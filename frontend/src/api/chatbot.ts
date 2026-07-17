@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const CHATBOT_URL = "http://localhost:8001";
+const CHATBOT_URL = import.meta.env.VITE_CHATBOT_URL || "http://localhost:8001";
 
 const ChatbotAPI = axios.create({
   baseURL: CHATBOT_URL,
@@ -9,12 +9,9 @@ const ChatbotAPI = axios.create({
 export async function askChatbot(message: string) {
   try {
     const response = await ChatbotAPI.post("/chat", {
-      message: message,
-      // If the endpoint expects a different key, swap this to:
-      // user_message: message
-      // text: message
+      message,
     });
-    return response.data;
+    return response.data as { answer?: string; country?: string };
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
       const messagePayload = error.response?.data ?? error.message;

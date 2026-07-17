@@ -326,10 +326,7 @@ def log_consultancy_visit(request):
         try:
             notification_data = {
                 'id': notification.id,
-                'visitor_name': notification.visitor.username if notification.visitor else 'Anonymous visitor',
-                'message': (
-                    f"{notification.visitor.username if notification.visitor else 'An anonymous user'} visited your profile page."
-                ),
+                'message': 'A user visited your profile page.',
                 'timestamp': notification.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
             }
             emit_notification_to_consultancy(consultancy_id, notification_data)
@@ -366,10 +363,8 @@ def get_consultancy_notifications(request):
     payload = [
         {
             'id': notification.id,
-            'visitor_name': notification.visitor.username if notification.visitor else 'Anonymous visitor',
-            'message': (
-                f"{notification.visitor.username if notification.visitor else 'An anonymous user'} visited your profile page."
-            ),
+            'visitor_name': 'Anonymous visitor',
+            'message': 'A user visited your profile page.',
             'timestamp': notification.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
             'is_read': notification.is_read,
         }
@@ -377,3 +372,81 @@ def get_consultancy_notifications(request):
     ]
 
     return JsonResponse({'notifications': payload, 'unread_count': sum(not item['is_read'] for item in payload)}, status=200)
+
+
+class CheckEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email', '').strip()
+        
+        if not email:
+            return Response(
+                {'detail': 'Email is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        exists = UserModel.objects.filter(email__iexact=email).exists()
+        
+        return Response(
+            {'exists': exists},
+            status=status.HTTP_200_OK,
+        )
+
+
+class UpdateProfileView(APIView):
+    def patch(self, request):
+        user = get_authenticated_user(request)
+        
+        if not user:
+            return Response(
+                {'detail': 'Authentication required.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        
+        name = request.data.get('name', '').strip()
+        password = request.data.get('password', '').strip()
+        
+        # Update name if provided
+        if name:
+            if user.role == 'consultancy':
+                user.office_name = name
+            else:
+                user.first_name = name
+        
+        # Update password if provided
+        if password:
+            user.set_password(password)
+        
+        user.save()
+        
+        return Response(
+            {
+                'detail': 'Profile updated successfully.',
+                'user': UserSerializer(user).data,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class DeleteAccountView(APIView):
+    def delete(self, request):
+        user = get_authenticated_user(request)
+        
+        if not user:
+            return Response(
+                {'detail': 'Authentication required.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        
+        try:
+            user.delete()
+            return Response(
+                {'detail': 'Account deleted successfully.'},
+                status=status.HTTP_204_NO_CONTENT,
+            )
+        except Exception as e:
+            return Response(
+                {'detail': f'Error deleting account: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )

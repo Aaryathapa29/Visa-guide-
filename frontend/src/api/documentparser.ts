@@ -1,9 +1,10 @@
-// frontend/src/api/documentParser.ts
-// Separate from api.ts — this talks to FastAPI (port 8002), not Django (port 8000)
+// src/api/documentparser.ts
+// Calls FastAPI document parser (port 8002), separate from Django (port 8000)
 
 const PARSER_URL = import.meta.env.VITE_PARSER_URL ?? "http://localhost:8002";
+// Must set in frontend/.env: VITE_PARSER_URL=http://localhost:8002
 
-// ── Types ─────────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────
 
 export interface GrammarError {
   id: string;
@@ -21,8 +22,18 @@ export interface VisaChecklist {
   has_employer_mention: boolean;
 }
 
+export interface AiDetection {
+  is_ai_generated: boolean;
+  confidence_score: number;
+  verdict: string;
+  risk_level: "High" | "Medium" | "Low" | "None";
+  detected_signatures: string[];
+  human_elements: string[];
+}
+
 export interface AnalysisResult {
   filename?: string;
+  document_type: string;
   word_count: number;
   char_count: number;
   overall_score: number;
@@ -41,11 +52,11 @@ export interface AnalysisResult {
   major_count: number;
   minor_count: number;
   visa_checklist: VisaChecklist;
+  ai_detection?: AiDetection;
 }
 
-// ── API calls ─────────────────────────────────────────────────────
+// ── API calls ──────────────────────────────────────────────────────────────
 
-// For file uploads (PDF, DOCX, TXT)
 export async function analyzeFile(file: File): Promise<AnalysisResult> {
   const form = new FormData();
   form.append("file", file);
@@ -53,18 +64,20 @@ export async function analyzeFile(file: File): Promise<AnalysisResult> {
   const res = await fetch(`${PARSER_URL}/api/v1/analyze/file`, {
     method: "POST",
     body: form,
-    // Do NOT set Content-Type header manually here — 
-    // fetch sets it automatically with the correct boundary for FormData
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? "File analysis failed");
+    const detail = err.detail;
+    // Classifier returns nested object: { "error": "unsupported_document", "message": "..." }
+    if (typeof detail === "object" && detail?.message) {
+      throw new Error(detail.message);
+    }
+    throw new Error(typeof detail === "string" ? detail : "File analysis failed");
   }
   return res.json();
 }
 
-// For pasted plain text
 export async function analyzeText(text: string): Promise<AnalysisResult> {
   const res = await fetch(`${PARSER_URL}/api/v1/analyze/text`, {
     method: "POST",
@@ -74,7 +87,11 @@ export async function analyzeText(text: string): Promise<AnalysisResult> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? "Text analysis failed");
+    const detail = err.detail;
+    if (typeof detail === "object" && detail?.message) {
+      throw new Error(detail.message);
+    }
+    throw new Error(typeof detail === "string" ? detail : "Text analysis failed");
   }
   return res.json();
 }

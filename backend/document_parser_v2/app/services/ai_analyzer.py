@@ -8,11 +8,17 @@ import json
 import os
 import re
 
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+except Exception:  # pragma: no cover - fallback for unsupported runtimes
+    genai = None
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+if GEMINI_API_KEY and genai is not None:
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+    except Exception:
+        pass
 
 MODEL_NAME = "gemini-2.5-flash"
 
@@ -74,8 +80,8 @@ def build_fallback_ai_analysis(text: str, spacy_data: dict, grammar_error_count:
 
 
 def ai_tone_and_visa_check(text: str, spacy_data: dict, grammar_error_count: int) -> dict:
-    if not GEMINI_API_KEY:
-        return build_fallback_ai_analysis(text, spacy_data, grammar_error_count, "GEMINI_API_KEY is not configured.")
+    if not GEMINI_API_KEY or genai is None:
+        return build_fallback_ai_analysis(text, spacy_data, grammar_error_count, "GEMINI_API_KEY is not configured or the Gemini client is unavailable.")
 
     context = f"""Facts already computed elsewhere (do not recheck):
 - Grammar/spelling errors already found by LanguageTool: {grammar_error_count}

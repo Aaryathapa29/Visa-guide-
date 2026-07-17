@@ -17,7 +17,8 @@ export default function DocumentParser({ onClose }: { onClose: () => void }) {
     setLoading(true);
     setError(null);
     try {
-      setResult(await analyzeFile(file));
+      const data = await analyzeFile(file);
+      setResult(data);
     } catch (e: any) {
       setError(e.message ?? "Something went wrong");
     } finally {
@@ -29,12 +30,28 @@ export default function DocumentParser({ onClose }: { onClose: () => void }) {
     setLoading(true);
     setError(null);
     try {
-      setResult(await analyzeText(text));
+      const data = await analyzeText(text);
+      setResult(data);
     } catch (e: any) {
       setError(e.message ?? "Something went wrong");
     } finally {
       setLoading(false);
     }
+  }
+
+  // Detect if error is a document type rejection from classifier
+  function isUnsupportedDoc(msg: string): boolean {
+    return (
+      msg.includes("does not appear") ||
+      msg.includes("not recognized") ||
+      msg.includes("medical document") ||
+      msg.includes("legal document") ||
+      msg.includes("technical document") ||
+      msg.includes("business") ||
+      msg.includes("too short") ||
+      msg.includes("study-abroad SOPs are accepted") ||
+      msg.includes("Only visa cover letters")
+    );
   }
 
   if (result) {
@@ -50,15 +67,26 @@ export default function DocumentParser({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="rounded-2xl bg-white p-6 sm:p-8 shadow-[0_4px_20px_-8px_rgba(10,31,68,.18)] space-y-6">
+
+      {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-[#0a1f44]">
-          Cover Letter Checker
+          📄 Cover Letter & SOP Checker
         </h2>
         <p className="text-sm mt-2 text-slate-600">
-          Analyze grammar, tone, and visa-specific requirements instantly.
+          Analyze grammar, tone, AI detection, and visa-specific requirements instantly.
         </p>
       </div>
 
+      {/* Accepted formats notice */}
+      <div
+        className="rounded-lg px-4 py-2 text-xs font-medium"
+        style={{ background: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0" }}
+      >
+        ✅ Accepted documents: Visa Cover Letters and Study-Abroad SOPs only
+      </div>
+
+      {/* Mode toggle */}
       <div className="flex gap-2 p-1.5 rounded-lg bg-slate-100">
         {(["upload", "text"] as Mode[]).map((m) => (
           <button
@@ -76,16 +104,44 @@ export default function DocumentParser({ onClose }: { onClose: () => void }) {
         ))}
       </div>
 
+      {/* Input area */}
       {mode === "upload"
         ? <UploadZone onFile={handleFile} loading={loading} />
         : <TextInput onSubmit={handleText} loading={loading} />
       }
 
+      {/* Error display */}
       {error && (
-        <div className="rounded-lg p-4 text-sm font-medium bg-red-50 text-red-700">
-          ❌ {error} — make sure the parser backend is running on port 8002 and LanguageTool/Docker is available if you want full grammar checks.
+        <div className="rounded-xl p-4 text-sm space-y-2"
+          style={{ background: "#fef2f2", border: "1px solid #fecaca" }}
+        >
+          {isUnsupportedDoc(error) ? (
+            <>
+              <p className="font-bold text-red-700">❌ Unsupported Document Type</p>
+              <p className="text-red-600">{error}</p>
+              <div
+                className="rounded-lg px-3 py-2 text-xs mt-2"
+                style={{ background: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0" }}
+              >
+                <p className="font-semibold">✅ Accepted documents:</p>
+                <p>• Visa Cover Letters (tourist, student, work, business visa)</p>
+                <p>• Study-Abroad Statements of Purpose (SOPs)</p>
+                <p className="mt-1 font-semibold">❌ Not accepted:</p>
+                <p>• Medical reports, doctor's SOPs, residency applications</p>
+                <p>• Legal documents, court orders, affidavits</p>
+                <p>• Business reports, invoices, financial statements</p>
+                <p>• Research papers, technical documents, code files</p>
+                <p>• Any document under 100 words</p>
+              </div>
+            </>
+          ) : (
+            <p className="text-red-700 font-medium">
+              ❌ {error} — make sure FastAPI is running on port 8002.
+            </p>
+          )}
         </div>
       )}
+
     </div>
   );
 }

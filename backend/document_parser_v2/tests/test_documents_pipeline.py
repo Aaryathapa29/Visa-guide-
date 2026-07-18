@@ -1,10 +1,9 @@
-import pytest
+import asyncio
 
 from app.routers import documents
 
 
-@pytest.mark.asyncio
-async def test_run_pipeline_returns_ai_detection(monkeypatch):
+def test_run_pipeline_returns_ai_detection(monkeypatch):
     monkeypatch.setattr(documents, "classify_document", lambda text: {"accepted": True, "document_type": "cover_letter", "reason": None})
     monkeypatch.setattr(documents, "analyse_with_spacy", lambda text: {
         "token_count": 10,
@@ -23,7 +22,10 @@ async def test_run_pipeline_returns_ai_detection(monkeypatch):
         "has_travel_dates": False,
         "has_employer_mention": False,
     })
-    monkeypatch.setattr(documents, "check_grammar", lambda text: [])
+    async def fake_check_grammar(text):
+        return []
+
+    monkeypatch.setattr(documents, "check_grammar", fake_check_grammar)
     monkeypatch.setattr(documents, "ai_tone_and_visa_check", lambda text, spacy_data, grammar_error_count: {
         "tone_analysis": {"formality": "Formal", "confidence": "Confident", "clarity": "Clear"},
         "visa_specific_issues": ["Issue"],
@@ -33,7 +35,7 @@ async def test_run_pipeline_returns_ai_detection(monkeypatch):
     })
     monkeypatch.setattr(documents, "detect_ai_content", lambda text: {"is_ai_generated": False, "confidence_score": 10, "detected_signatures": [], "human_elements": []})
 
-    result = await documents._run_pipeline("This is a visa cover letter")
+    result = asyncio.run(documents._run_pipeline("This is a visa cover letter"))
 
     assert result["ai_detection"]["is_ai_generated"] is False
     assert result["summary"] == "A strong summary"

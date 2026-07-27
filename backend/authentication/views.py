@@ -305,37 +305,43 @@ class PasswordResetRequestView(APIView):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        email = serializer.validated_data['email']
-
-        user = User.objects.filter(email__iexact=email).first()
-
-        if user:
-            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-            token = default_token_generator.make_token(user)
-            reset_url = (
-                f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:5173').rstrip('/')}"
-                f"/?uidb64={uidb64}&token={token}"
+        try:
+            user, uidb64, token = serializer.save()
+        except Exception as e:
+            print(f'Error in PasswordResetRequestSerializer.save(): {e}')
+            return Response(
+                {'detail': 'An error occurred processing your request.'},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-            resend.api_key = os.environ.get('RESEND_API_KEY')
-            if not resend.api_key:
-                return Response(
-                    {'detail': 'Password reset email service is not configured.'},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        reset_url = (
+            f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:5173').rstrip('/')}"
+            f"/?uidb64={uidb64}&token={token}"
+        )
+
+        # Try to send email, but don't fail if service is unavailable
+        resend_api_key = os.environ.get('RESEND_API_KEY')
+        if resend_api_key:
+            try:
+                resend.api_key = resend_api_key
+                resend.Emails.send(
+                    {
+                        'from': 'onboarding@resend.dev',
+                        'to': [user.email],
+                        'subject': 'Reset your Visa Guide password',
+                        'html': (
+                            '<p>We received a request to reset your password.</p>'
+                            f'<p><a href="{reset_url}">Reset your password</a></p>'
+                            '<p>If you did not request this, you can ignore this email.</p>'
+                        ),
+                    }
                 )
-
-            resend.Emails.send(
-                {
-                    'from': 'onboarding@resend.dev',
-                    'to': [user.email],
-                    'subject': 'Reset your Visa Guide password',
-                    'html': (
-                        '<p>We received a request to reset your password.</p>'
-                        f'<p><a href="{reset_url}">Reset your password</a></p>'
-                        '<p>If you did not request this, you can ignore this email.</p>'
-                    ),
-                }
-            )
+                print(f'Password reset email sent to {user.email}')
+            except Exception as e:
+                print(f'Warning: Failed to send password reset email: {e}')
+                # Don't fail the entire request if email sending fails
+        else:
+            print('Warning: RESEND_API_KEY not configured; password reset email not sent')
 
         return Response(
             {'message': 'If an account exists, a reset link has been sent.'},
@@ -386,6 +392,7 @@ def log_consultancy_visit(request):
         notification = ConsultancyVisitNotification.objects.create(
             consultancy=consultancy,
             visitor=visitor,
+            is_read=False,
         )
         # Ensure the object is written and refreshed from DB
         notification.refresh_from_db()
@@ -401,6 +408,7 @@ def log_consultancy_visit(request):
                 'visitor_name': 'Anonymous visitor',
                 'message': 'A user visited your profile page.',
                 'timestamp': notification.timestamp.isoformat(),
+                'is_read': notification.is_read,
             }
             emit_notification_to_consultancy(consultancy_id, notification_data)
         except Exception as e:
@@ -414,6 +422,7 @@ def log_consultancy_visit(request):
                 'consultancy_id': notification.consultancy_id,
                 'visitor_id': notification.visitor_id,
                 'timestamp': notification.timestamp.isoformat(),
+                'is_read': notification.is_read,
             },
         },
         status=201,
@@ -433,6 +442,7 @@ def get_consultancy_notifications(request):
         ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).update(is_read=True)
 
     notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
+    unread_count = ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).count()
 
     payload = [
         {
@@ -445,7 +455,7 @@ def get_consultancy_notifications(request):
         for notification in notifications
     ]
 
-    return JsonResponse({'notifications': payload, 'unread_count': sum(not item['is_read'] for item in payload)}, status=200)
+    return JsonResponse({'notifications': payload, 'unread_count': unread_count}, status=200)
     
 class ConsultancyNotificationsView(APIView):
     """Notifications endpoint for consultancies.
@@ -461,6 +471,7 @@ class ConsultancyNotificationsView(APIView):
             return Response({'detail': 'Only consultancy accounts can access notifications.'}, status=403)
 
         notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
+        unread_count = ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).count()
 
         payload = [
             {
@@ -473,7 +484,7 @@ class ConsultancyNotificationsView(APIView):
             for notification in notifications
         ]
 
-        return Response({'notifications': payload, 'unread_count': sum(not item['is_read'] for item in payload)}, status=200)
+        return Response({'notifications': payload, 'unread_count': unread_count}, status=200)
 
     def post(self, request, *args, **kwargs):
         user = request.user
@@ -484,6 +495,7 @@ class ConsultancyNotificationsView(APIView):
 
         # Return the updated list
         notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
+        unread_count = ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).count()
         payload = [
             {
                 'id': notification.id,
@@ -495,7 +507,35 @@ class ConsultancyNotificationsView(APIView):
             for notification in notifications
         ]
 
-        return Response({'notifications': payload, 'unread_count': sum(not item['is_read'] for item in payload)}, status=200)
+        return Response({'notifications': payload, 'unread_count': unread_count}, status=200)
+
+
+class MarkNotificationsReadView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        if not user or getattr(user, 'role', None) != 'consultancy':
+            return Response({'detail': 'Only consultancy accounts can access notifications.'}, status=403)
+
+        ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).update(is_read=True)
+
+        notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
+        unread_count = ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).count()
+
+        payload = [
+            {
+                'id': notification.id,
+                'visitor_name': 'Anonymous visitor',
+                'message': 'A user visited your profile page.',
+                'timestamp': notification.timestamp.isoformat(),
+                'is_read': notification.is_read,
+            }
+            for notification in notifications
+        ]
+
+        return Response({'notifications': payload, 'unread_count': unread_count}, status=200)
 
 
 class CheckEmailView(APIView):

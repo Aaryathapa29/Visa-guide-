@@ -52,7 +52,8 @@
 from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
 from django.utils import timezone
-from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -261,6 +262,38 @@ class LoginSerializer(serializers.Serializer):
 class PasswordResetRequestSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
+    def validate_email(self, value):
+        normalized_email = value.strip()
+
+        try:
+            user = UserModel.objects.get(email__iexact=normalized_email)
+        except UserModel.DoesNotExist as exc:
+            raise serializers.ValidationError({'detail': 'No account found for that email address.'}) from exc
+
+        if not self._has_verified_email(user):
+            raise serializers.ValidationError({'detail': 'This account does not have a verified email address.'})
+
+        return normalized_email
+
+    def save(self):
+        email = self.validated_data['email']
+        user = UserModel.objects.get(email__iexact=email)
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        return user, uidb64, token
+
+    def _has_verified_email(self, user):
+        email_value = getattr(user, 'email', None)
+        if not email_value:
+            return False
+
+        for attr in ('is_email_verified', 'email_verified', 'email_verified_at'):
+            if hasattr(user, attr):
+                value = getattr(user, attr)
+                return bool(value) if isinstance(value, bool) else value is not None
+
+        return True
+
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
     uidb64 = serializers.CharField()
@@ -271,16 +304,31 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         try:
             uid = urlsafe_base64_decode(attrs['uidb64']).decode()
             user = UserModel.objects.get(pk=uid)
-        except Exception as exc:
+        except (TypeError, ValueError, OverflowError, UserModel.DoesNotExist) as exc:
             raise serializers.ValidationError({'detail': 'Invalid reset link.'}) from exc
 
         if not default_token_generator.check_token(user, attrs['token']):
             raise serializers.ValidationError({'detail': 'Invalid or expired reset token.'})
 
+        if not self._has_verified_email(user):
+            raise serializers.ValidationError({'detail': 'This account does not have a verified email address.'})
+
         validate_password(attrs['new_password'], user=user)
 
         attrs['user'] = user
         return attrs
+
+    def _has_verified_email(self, user):
+        email_value = getattr(user, 'email', None)
+        if not email_value:
+            return False
+
+        for attr in ('is_email_verified', 'email_verified', 'email_verified_at'):
+            if hasattr(user, attr):
+                value = getattr(user, attr)
+                return bool(value) if isinstance(value, bool) else value is not None
+
+        return True
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

@@ -5,119 +5,202 @@ const SOCKETIO_SERVER_URL = import.meta.env.VITE_SOCKETIO_URL || 'http://localho
 // If the Socket.IO server needs a different port, set VITE_SOCKETIO_URL in frontend/.env.
 
 let socket: Socket | null = null;
+const queuedListeners: Array<{ event: string; callback: (...args: any[]) => void }> = [];
+const snapshotCallbacks: Array<(payload: any) => void> = [];
+const newNotificationWrappers = new Map<Function, (...args: any[]) => void>();
+const notificationsReadWrappers = new Map<Function, (...args: any[]) => void>();
+let authSucceeded = false;
+let latestSnapshot: any = null;
 
-export const getSocket = (): Socket => {
-  if (!socket) {
-    socket = io(SOCKETIO_SERVER_URL, {
-      // allow polling fallback for environments where native websockets are blocked
-      transports: ['polling', 'websocket'],
-      withCredentials: true,
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5,
-    });
-
-    socket.on('connect', () => {
-      console.log('Connected to Socket.IO server');
-    });
-
-    socket.on('connect_error', (error) => {
-      console.error('Socket.IO connection error:', error);
-    });
-
-    socket.on('disconnect', () => {
-      console.log('Disconnected from Socket.IO server');
-    });
-
-    // Debug: log any incoming new_notification events globally so we can verify delivery
-    socket.on('new_notification', (payload) => {
-      try {
-        console.debug('[socketio] new_notification:', payload);
-      } catch (e) {
-        console.debug('[socketio] new_notification (unserializable payload)');
-      }
-    });
-
-    // When authentication succeeds, fetch a snapshot of notifications from the API
-    socket.on('auth_success', () => {
-      console.debug('[socketio] auth_success received, fetching notification snapshot');
-      fetchAndNotifySnapshot();
-    });
-
-    socket.on('auth_error', (err) => {
-      console.warn('[socketio] auth_error:', err);
-    });
-
-    // expose a hook for components to receive the fetched snapshot
-    const snapshotCallbacks: Array<(payload: any) => void> = [];
-    // attach to socket so public registration helpers can access the same array
-    // @ts-ignore
-    socket.__snapshotCallbacks = snapshotCallbacks;
-
-    async function fetchAndNotifySnapshot() {
-      try {
-        const resp = await API.get('notifications/');
-        snapshotCallbacks.forEach((cb) => {
-          try {
-            cb(resp.data);
-          } catch (e) {
-            console.error('[socketio] snapshot callback error:', e);
-          }
-        });
-      } catch (e) {
-        console.debug('[socketio] failed to fetch notification snapshot:', e?.message || e);
-      }
-    }
-
-    // public registration helpers are appended below once socket exists
-
+const createSocket = (): Socket => {
+  if (socket) {
+    return socket;
   }
+
+  socket = io(SOCKETIO_SERVER_URL, {
+    transports: ['polling', 'websocket'],
+    withCredentials: true,
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    reconnectionAttempts: 5,
+  });
+
+  socket.on('connect', () => {
+    console.log('Connected to Socket.IO server');
+  });
+
+  socket.on('connect_error', (error) => {
+    console.error('Socket.IO connection error:', error);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Disconnected from Socket.IO server');
+  });
+
+  socket.on('new_notification', (payload) => {
+    try {
+      console.debug('[socketio] new_notification:', payload);
+    } catch (e) {
+      console.debug('[socketio] new_notification (unserializable payload)');
+    }
+  });
+
+  socket.on('auth_success', () => {
+    console.debug('[socketio] auth_success received, fetching notification snapshot');
+    authSucceeded = true;
+    fetchAndNotifySnapshot();
+  });
+
+  socket.on('auth_error', (err) => {
+    console.warn('[socketio] auth_error:', err);
+  });
+
+  const deliveryEvents = ['new_notification', 'notifications_read'];
+  deliveryEvents.forEach((event) => {
+    const listeners = queuedListeners.filter((item) => item.event === event);
+    listeners.forEach(({ callback }) => socket?.on(event, callback));
+  });
+
+  queuedListeners.forEach(({ event, callback }) => {
+    if (!deliveryEvents.includes(event)) {
+      socket?.on(event, callback);
+    }
+  });
+  queuedListeners.length = 0;
 
   return socket;
 };
 
+const getSocketIfInitialized = (): Socket | null => socket;
+
+const addSocketListener = (event: string, callback: (...args: any[]) => void) => {
+  const existingSocket = getSocketIfInitialized();
+
+  if (existingSocket) {
+    existingSocket.on(event, callback);
+    return;
+  }
+
+  queuedListeners.push({ event, callback });
+};
+
+const removeSocketListener = (event: string, callback: (...args: any[]) => void) => {
+  const existingSocket = getSocketIfInitialized();
+
+  if (existingSocket) {
+    existingSocket.off(event, callback);
+    return;
+  }
+
+  const index = queuedListeners.findIndex((item) => item.event === event && item.callback === callback);
+  if (index >= 0) {
+    queuedListeners.splice(index, 1);
+  }
+};
+
+async function fetchAndNotifySnapshot() {
+  try {
+    const resp = await API.get('notifications/');
+    latestSnapshot = resp.data;
+    snapshotCallbacks.forEach((cb) => {
+      try {
+        cb(resp.data);
+      } catch (e) {
+        console.error('[socketio] snapshot callback error:', e);
+      }
+    });
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.debug('[socketio] failed to fetch notification snapshot:', errorMessage);
+  }
+}
+
 export const authenticateSocket = (userId: number, role: string) => {
-  const socket = getSocket();
+  if (!userId || !role) {
+    console.warn('[socketio] authenticateSocket called without valid userId or role');
+    return;
+  }
+
+  const socket = createSocket();
   socket.emit('authenticate', {
     user_id: userId,
-    role: role,
+    role,
   });
 };
 
 export const onNewNotification = (callback: (notification: any) => void) => {
-  const socket = getSocket();
-  socket.on('new_notification', (payload) => {
+  const wrapper = (payload: any) => {
     console.debug('[socketio] onNewNotification wrapper received payload:', payload);
     try {
       callback(payload);
     } catch (e) {
       console.error('[socketio] onNewNotification callback error:', e);
     }
-  });
+  };
+
+  newNotificationWrappers.set(callback, wrapper);
+  addSocketListener('new_notification', wrapper);
 };
 
 export const offNewNotification = (callback: (notification: any) => void) => {
-  const socket = getSocket();
-  socket.off('new_notification', callback);
+  const wrapper = newNotificationWrappers.get(callback);
+  if (wrapper) {
+    removeSocketListener('new_notification', wrapper);
+    newNotificationWrappers.delete(callback);
+  } else {
+    removeSocketListener('new_notification', callback);
+  }
 };
 
-// snapshot registration helpers
 export const onNotificationsSnapshot = (callback: (payload: any) => void) => {
-  const socket = getSocket();
-  // ensure we register against the in-scope snapshotCallbacks array
-  // @ts-ignore - attach to socket instance for storage convenience
-  socket.__snapshotCallbacks = socket.__snapshotCallbacks || [];
-  socket.__snapshotCallbacks.push(callback);
+  snapshotCallbacks.push(callback);
+  if (authSucceeded && latestSnapshot) {
+    try {
+      callback(latestSnapshot);
+    } catch (e) {
+      console.error('[socketio] snapshot callback immediate delivery error:', e);
+    }
+  }
 };
 
 export const offNotificationsSnapshot = (callback: (payload: any) => void) => {
-  const socket = getSocket();
-  // @ts-ignore
-  if (socket.__snapshotCallbacks) {
-    // @ts-ignore
-    socket.__snapshotCallbacks = socket.__snapshotCallbacks.filter((cb: any) => cb !== callback);
+  const index = snapshotCallbacks.findIndex((cb) => cb === callback);
+  if (index >= 0) {
+    snapshotCallbacks.splice(index, 1);
   }
+};
+
+export const onNotificationsRead = (callback: (payload: any) => void) => {
+  const wrapper = (payload: any) => {
+    try {
+      callback(payload);
+    } catch (e) {
+      console.error('[socketio] onNotificationsRead callback error:', e);
+    }
+  };
+
+  notificationsReadWrappers.set(callback, wrapper);
+  addSocketListener('notifications_read', wrapper);
+};
+
+export const offNotificationsRead = (callback: (payload: any) => void) => {
+  const wrapper = notificationsReadWrappers.get(callback);
+  if (wrapper) {
+    removeSocketListener('notifications_read', wrapper);
+    notificationsReadWrappers.delete(callback);
+  } else {
+    removeSocketListener('notifications_read', callback);
+  }
+};
+
+export const emitNotificationsRead = (consultancyId: number) => {
+  const socket = getSocketIfInitialized();
+  if (!socket) {
+    return;
+  }
+
+  socket.emit('mark_notifications_read', { consultancy_id: consultancyId });
 };
 
 export const disconnectSocket = () => {

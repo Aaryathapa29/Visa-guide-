@@ -18,6 +18,12 @@ export default function ConsultancyVisitNotificationsFeed() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const rawAuthUser = typeof window !== "undefined" ? window.localStorage.getItem("authUser") : null;
+    if (!rawAuthUser) return;
+
+    const parsedAuthUser = JSON.parse(rawAuthUser);
+    if (!parsedAuthUser?.id || parsedAuthUser.role !== "consultancy") return;
+
     let mounted = true;
 
     async function loadNotifications() {

@@ -157,7 +157,9 @@ uvicorn app:app --reload --port 8001
 ```bash
 cd backend/document_parser_v2
 python -m venv .venv
+cd backend
 source .venv/Scripts/activate
+python socketio_server.py
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m spacy download en_core_web_sm

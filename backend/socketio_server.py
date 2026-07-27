@@ -78,11 +78,12 @@ async def authenticate(sid, data):
     user_role = data.get('role')
     
     if user_id and user_role == 'consultancy':
-        connected_users[sid] = {'id': user_id, 'role': user_role}
-        print(f'User {user_id} (consultancy) authenticated on socket {sid}')
+        room_name = f'consultancy_{user_id}'
+        connected_users[sid] = {'id': user_id, 'role': user_role, 'room': room_name}
+        await sio.enter_room(sid, room_name)
+        print(f'User {user_id} (consultancy) authenticated on socket {sid} and joined room {room_name}')
         await sio.emit('auth_success', {'message': 'Authenticated successfully'}, to=sid)
     else:
-        # keep the connection but inform client
         await sio.emit('auth_error', {'message': 'Authentication failed'}, to=sid)
 
 
@@ -91,6 +92,9 @@ async def disconnect(sid):
     """Handle client disconnection"""
     if sid in connected_users:
         user_id = connected_users[sid].get('id')
+        room_name = connected_users[sid].get('room')
+        if room_name:
+            await sio.leave_room(sid, room_name)
         print(f'Client {sid} (User {user_id}) disconnected')
         del connected_users[sid]
 
@@ -105,15 +109,21 @@ async def handle_send_notification(sid, data):
         print(f'[Socket.IO] Ignoring invalid send_notification payload: {data}')
         return
 
-    delivered = False
-    for client_sid, user_data in list(connected_users.items()):
-        if user_data['id'] == consultancy_id and user_data['role'] == 'consultancy':
-            await sio.emit('new_notification', notification, to=client_sid)
-            print(f'[Socket.IO] Forwarded notification to consultancy {consultancy_id} on socket {client_sid}')
-            delivered = True
+    room_name = f'consultancy_{consultancy_id}'
+    await sio.emit('new_notification', notification, room=room_name)
+    print(f'[Socket.IO] Forwarded notification to consultancy {consultancy_id} room {room_name}')
 
-    if not delivered:
-        print(f'[Socket.IO] Consultancy {consultancy_id} is not currently connected; notification will be stored for later retrieval.')
+
+@sio.on('mark_notifications_read')
+async def handle_mark_notifications_read(sid, data):
+    consultancy_id = data.get('consultancy_id')
+    if not consultancy_id:
+        print(f'[Socket.IO] Ignoring invalid mark_notifications_read payload: {data}')
+        return
+
+    room_name = f'consultancy_{consultancy_id}'
+    await sio.emit('notifications_read', {'unread_count': 0}, room=room_name)
+    print(f'[Socket.IO] Broadcast notifications_read to consultancy {consultancy_id} room {room_name}')
 
 
 async def emit_notification(consultancy_id, notification_data):

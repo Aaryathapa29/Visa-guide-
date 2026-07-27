@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Bell, Building2, CalendarDays, MessageCircle, GraduationCap, Hand } from "lucide-react";
 import type { ConsultancyTab } from "../ui/theme";
 import API from "../../../api";
-import { offNewNotification, onNewNotification, onNotificationsSnapshot, offNotificationsSnapshot } from "../../../socketio-service";
+import { offNewNotification, onNewNotification, onNotificationsSnapshot, offNotificationsSnapshot, onNotificationsRead, offNotificationsRead, emitNotificationsRead } from "../../../socketio-service";
 import ProfileDropdown from "../ui/ProfileDropdown";
 import LogoutConfirmationModal from "../modals/LogoutConfirmationModal";
 
@@ -83,54 +83,55 @@ export default function ConsultancyNavbar({
   const [pendingCount, setPendingCount] = useState(() => readPendingCount());
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
-  const unread = pendingCount;
+  const unreadCount = pendingCount;
 
   useEffect(() => {
+    const rawAuthUser = typeof window !== "undefined" ? window.localStorage.getItem("authUser") : null;
+    if (!rawAuthUser) return;
+
+    const parsedAuthUser = JSON.parse(rawAuthUser);
+    if (!parsedAuthUser?.id || parsedAuthUser.role !== "consultancy") return;
+
     API.get("notifications/")
       .then((response) => {
-        const serverNotifications = response.data.notifications || [];
-
-        // Prefer explicit unread_count returned by the backend (stable source of truth).
-        // Fallback to counting unread items in the payload if unread_count isn't provided.
-        const rawUnread = response.data.unread_count;
-        const unreadFromServer = typeof rawUnread !== "undefined" ? Number(rawUnread) : serverNotifications.filter((notification: Notification) => !notification.is_read).length;
+        const serverNotifications = Array.isArray(response.data.notifications) ? response.data.notifications : [];
+        const unreadFromServer = Number.isFinite(Number(response.data.unread_count ?? 0)) ? Number(response.data.unread_count ?? 0) : 0;
 
         setNotifications(serverNotifications);
+        setPendingCount(unreadFromServer);
+        writePendingCount(unreadFromServer);
 
-        // Compute how many are new since last seen.
         const lastSeenRaw = typeof window !== "undefined" ? window.localStorage.getItem("consultancyNotificationLastSeenAt") : null;
         const lastSeenAt = lastSeenRaw ? Date.parse(lastSeenRaw) : null;
+        const newSinceLastSeen = lastSeenAt
+          ? serverNotifications.filter((n: Notification) => {
+              const t = Date.parse(n.timestamp);
+              return !Number.isNaN(t) && t > lastSeenAt && !n.is_read;
+            }).length
+          : 0;
 
-        const initialCount = Number(unreadFromServer || 0);
-
-        const safeInitial = Number.isFinite(initialCount) ? initialCount : 0;
-
-        if (safeInitial > 0) {
+        if (newSinceLastSeen > 0) {
           const latestTimestamp = serverNotifications.find((n: Notification) => !n.is_read)?.timestamp || new Date().toISOString();
           const newEvent: NotificationEvent = {
             id: Date.now(),
-            count: safeInitial,
+            count: newSinceLastSeen,
             timestamp: latestTimestamp,
-            label: `${safeInitial} anonymous profile visits made`,
+            label: `${newSinceLastSeen} anonymous profile visits made`,
           };
           setHistory((previous) => {
             const next = [newEvent, ...previous.filter((entry) => entry.id !== newEvent.id)].slice(0, 6);
             writeStoredHistory(next);
             return next;
           });
-          setPendingCount(safeInitial);
-          writePendingCount(safeInitial);
-        } else {
-          setPendingCount(0);
-          writePendingCount(0);
         }
       })
       .catch(() => null);
 
-    const handler = (notification: Notification) => {
+    const liveNotificationHandler = (notification: Notification) => {
+      console.debug('[socketio] live_notification received', notification);
       setNotifications((items) => (items.some((item) => item.id === notification.id) ? items : [{ ...notification, is_read: false }, ...items]));
       setPendingCount((current) => {
-        const next = current + 1;
+        const next = Math.max(0, current + 1);
         const event: NotificationEvent = {
           id: Date.now(),
           count: next,
@@ -147,52 +148,59 @@ export default function ConsultancyNavbar({
       });
     };
 
-    onNewNotification(handler);
+    const readHandler = (data: any) => {
+      console.debug('[socketio] notifications_read received', data);
+      const unreadCount = Number.isFinite(Number(data?.unread_count ?? 0)) ? Number(data?.unread_count ?? 0) : 0;
+      setPendingCount(unreadCount);
+      writePendingCount(unreadCount);
+      setNotifications((items) => items.map((item) => ({ ...item, is_read: true })));
+    };
+
+    onNewNotification(liveNotificationHandler);
+    onNotificationsRead(readHandler);
 
     const snapshotHandler = (data: any) => {
-      const serverNotifications = data?.notifications || [];
-      const rawUnread = data?.unread_count;
-      const unreadFromServer = typeof rawUnread !== "undefined" ? Number(rawUnread) : serverNotifications.filter((notification: Notification) => !notification.is_read).length;
+      console.debug('[socketio] snapshotHandler received', data);
+
+      const serverNotifications = Array.isArray(data?.notifications) ? data.notifications : [];
+      const unreadFromServer = Number.isFinite(Number(data?.unread_count ?? 0)) ? Number(data?.unread_count ?? 0) : serverNotifications.filter((notification: Notification) => !notification.is_read).length;
 
       setNotifications(serverNotifications);
+      setPendingCount(unreadFromServer);
+      writePendingCount(unreadFromServer);
+      console.debug('[ConsultancyNavbar] snapshot applied', serverNotifications.length, 'notifications, unread', unreadFromServer);
 
-      const lastSeenRaw = typeof window !== "undefined" ? window.localStorage.getItem("consultancyNotificationLastSeenAt") : null;
+      const lastSeenRaw = typeof window !== 'undefined' ? window.localStorage.getItem('consultancyNotificationLastSeenAt') : null;
       const lastSeenAt = lastSeenRaw ? Date.parse(lastSeenRaw) : null;
 
-      const initialCount = lastSeenAt
+      const newSinceLastSeen = lastSeenAt
         ? serverNotifications.filter((n: Notification) => {
             const t = Date.parse(n.timestamp);
             return !Number.isNaN(t) && t > lastSeenAt && !n.is_read;
           }).length
-        : Number(unreadFromServer || 0);
+        : 0;
 
-      const safeInitial = Number.isFinite(initialCount) ? initialCount : 0;
-
-      if (safeInitial > 0) {
+      if (newSinceLastSeen > 0) {
         const latestTimestamp = serverNotifications.find((n: Notification) => !n.is_read)?.timestamp || new Date().toISOString();
         const newEvent: NotificationEvent = {
           id: Date.now(),
-          count: safeInitial,
+          count: newSinceLastSeen,
           timestamp: latestTimestamp,
-          label: `${safeInitial} anonymous profile visits made`,
+          label: `${newSinceLastSeen} anonymous profile visits made`,
         };
         setHistory((previous) => {
           const next = [newEvent, ...previous.filter((entry) => entry.id !== newEvent.id)].slice(0, 6);
           writeStoredHistory(next);
           return next;
         });
-        setPendingCount(safeInitial);
-        writePendingCount(safeInitial);
-      } else {
-        setPendingCount(0);
-        writePendingCount(0);
       }
     };
 
     onNotificationsSnapshot(snapshotHandler);
 
     return () => {
-      offNewNotification(handler);
+      offNewNotification(liveNotificationHandler);
+      offNotificationsRead(readHandler);
       offNotificationsSnapshot(snapshotHandler);
     };
   }, []);
@@ -212,14 +220,34 @@ export default function ConsultancyNavbar({
 
       // send mark-as-read request and update local state from server response when available
       try {
-        const resp = await API.post("notifications/");
-        const serverNotifications = resp?.data?.notifications || [];
-        const serverUnread = typeof resp?.data?.unread_count !== "undefined" ? Number(resp.data.unread_count) : serverNotifications.filter((n: Notification) => !n.is_read).length;
+        const accessToken = typeof window !== "undefined"
+          ? window.localStorage.getItem("accessToken") || window.localStorage.getItem("access_token")
+          : null;
+
+        const resp = await API.post(
+          "notifications/mark-read/",
+          null,
+          {
+            headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+            withCredentials: true,
+          }
+        );
+
+        const serverNotifications = Array.isArray(resp?.data?.notifications) ? resp.data.notifications : [];
+        const serverUnread = Number.isFinite(Number(resp?.data?.unread_count ?? 0)) ? Number(resp.data.unread_count ?? 0) : serverNotifications.filter((n: Notification) => !n.is_read).length;
         setNotifications(serverNotifications);
-        setPendingCount(Number.isFinite(serverUnread) ? serverUnread : 0);
-        writePendingCount(Number.isFinite(serverUnread) ? serverUnread : 0);
+        setPendingCount(serverUnread);
+        writePendingCount(serverUnread);
+
+        if (typeof window !== "undefined") {
+          const userJson = window.localStorage.getItem("authUser");
+          const userData = userJson ? JSON.parse(userJson) : null;
+          if (userData?.id) {
+            emitNotificationsRead(userData.id);
+          }
+        }
       } catch (e) {
-        // swallow network errors but keep optimistic UI
+        console.error('[ConsultancyNavbar] failed to mark notifications as read', e);
       }
     }
   }
@@ -279,7 +307,11 @@ export default function ConsultancyNavbar({
           <div className="relative flex items-center gap-1">
             <button onClick={toggleNotifications} className="relative grid h-10 w-10 place-items-center rounded-full text-white/80 transition-colors hover:bg-white/5 hover:text-[#f97316]" aria-label="Visit notifications">
               <Bell className="h-5 w-5" />
-              {unread > 0 && <span className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-[#f97316] px-1 text-[10px] font-bold text-white">{unread}</span>}
+              {(unreadCount > 0 || notifications.length > 0) && (
+                <span className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-[#f97316] px-1 text-[10px] font-bold text-white">
+                  {unreadCount > 0 ? unreadCount : '•'}
+                </span>
+              )}
             </button>
             {open && (
               <div className="absolute right-0 top-12 z-50 w-80 border border-slate-200 bg-white p-4 text-[#0a1f44] shadow-xl">

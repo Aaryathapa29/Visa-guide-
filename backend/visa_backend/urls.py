@@ -24,6 +24,7 @@ from authentication.views import (
     get_all_consultancies,
     log_consultancy_visit,
     ConsultancyNotificationsView,
+    MarkNotificationsReadView,
 )
 
 def home(request):
@@ -73,4 +74,5 @@ urlpatterns = [
     path('api/country-profiles/<int:profile_id>/', country_profiles, name='country_profile_detail'),
     path('api/log-visit/', log_consultancy_visit, name='log_consultancy_visit'),
     path('api/notifications/', ConsultancyNotificationsView.as_view(), name='get_consultancy_notifications'),
+    path('api/notifications/mark-read/', MarkNotificationsReadView.as_view(), name='mark_notifications_read'),
 ]

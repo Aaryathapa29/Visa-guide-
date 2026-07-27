@@ -13,6 +13,7 @@ from .views import (
     DeleteAccountView,
     log_consultancy_visit,
     ConsultancyNotificationsView,
+    MarkNotificationsReadView,
 )
 
 urlpatterns = [
@@ -39,4 +40,5 @@ urlpatterns = [
     path('delete-account/', DeleteAccountView.as_view(), name='delete_account'),
     path('log-visit/', log_consultancy_visit, name='log_visit'),
     path('notifications/', ConsultancyNotificationsView.as_view(), name='notifications'),
+    path('notifications/mark-read/', MarkNotificationsReadView.as_view(), name='mark_notifications_read'),
 ]

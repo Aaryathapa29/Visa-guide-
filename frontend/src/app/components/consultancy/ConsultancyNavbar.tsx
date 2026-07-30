@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Bell, Building2, CalendarDays, MessageCircle, GraduationCap, Hand } from "lucide-react";
 import type { ConsultancyTab } from "../ui/theme";
 import API from "../../../api";
-import { offNewNotification, onNewNotification } from "../../../socketio-service";
+import { offNewNotification, onNewNotification, onNotificationsSnapshot, offNotificationsSnapshot, onNotificationsRead, offNotificationsRead, emitNotificationsRead } from "../../../socketio-service";
 import ProfileDropdown from "../ui/ProfileDropdown";
 import LogoutConfirmationModal from "../modals/LogoutConfirmationModal";
 
@@ -13,6 +13,58 @@ const TABS: { value: ConsultancyTab; label: string }[] = [
 ];
 
 type Notification = { id: number; message: string; timestamp: string; is_read: boolean };
+type NotificationEvent = { id: number; count: number; timestamp: string; label: string };
+
+function readStoredHistory() {
+  if (typeof window === "undefined") return [] as NotificationEvent[];
+
+  try {
+    const raw = window.localStorage.getItem("consultancyNotificationHistory");
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as NotificationEvent[];
+    return Array.isArray(parsed) ? parsed.slice(0, 6) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredHistory(history: NotificationEvent[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem("consultancyNotificationHistory", JSON.stringify(history.slice(0, 6)));
+}
+
+function readPendingCount() {
+  if (typeof window === "undefined") return 0;
+
+  try {
+    const raw = window.localStorage.getItem("consultancyNotificationPendingCount");
+    return Number(raw) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function writePendingCount(count: number) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem("consultancyNotificationPendingCount", String(count));
+}
+
+function formatRelativeTime(timestamp: string) {
+  const parsed = Date.parse(timestamp);
+  if (Number.isNaN(parsed)) return "just now";
+
+  const diffMs = Date.now() - parsed;
+  const diffMinutes = Math.round(diffMs / 60000);
+
+  if (diffMinutes < 1) return "just now";
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  const diffDays = Math.round(diffHours / 24);
+  return `${diffDays}d ago`;
+}
 
 export default function ConsultancyNavbar({
   activeTab,
@@ -27,23 +79,176 @@ export default function ConsultancyNavbar({
 }) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [history, setHistory] = useState<NotificationEvent[]>(() => readStoredHistory());
+  const [pendingCount, setPendingCount] = useState(() => readPendingCount());
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
-  const unread = notifications.filter((notification) => !notification.is_read).length;
+  const unreadCount = pendingCount;
 
   useEffect(() => {
-    API.get("notifications/").then((response) => setNotifications(response.data.notifications || [])).catch(() => null);
-    const handler = (notification: Notification) => setNotifications((items) => items.some((item) => item.id === notification.id) ? items : [{ ...notification, is_read: false }, ...items]);
-    onNewNotification(handler);
-    return () => offNewNotification(handler);
+    const rawAuthUser = typeof window !== "undefined" ? window.localStorage.getItem("authUser") : null;
+    if (!rawAuthUser) return;
+
+    const parsedAuthUser = JSON.parse(rawAuthUser);
+    if (!parsedAuthUser?.id || parsedAuthUser.role !== "consultancy") return;
+
+    API.get("notifications/")
+      .then((response) => {
+        const serverNotifications = Array.isArray(response.data.notifications) ? response.data.notifications : [];
+        const unreadFromServer = Number.isFinite(Number(response.data.unread_count ?? 0)) ? Number(response.data.unread_count ?? 0) : 0;
+
+        setNotifications(serverNotifications);
+        setPendingCount(unreadFromServer);
+        writePendingCount(unreadFromServer);
+
+        const lastSeenRaw = typeof window !== "undefined" ? window.localStorage.getItem("consultancyNotificationLastSeenAt") : null;
+        const lastSeenAt = lastSeenRaw ? Date.parse(lastSeenRaw) : null;
+        const newSinceLastSeen = lastSeenAt
+          ? serverNotifications.filter((n: Notification) => {
+              const t = Date.parse(n.timestamp);
+              return !Number.isNaN(t) && t > lastSeenAt && !n.is_read;
+            }).length
+          : 0;
+
+        if (newSinceLastSeen > 0) {
+          const latestTimestamp = serverNotifications.find((n: Notification) => !n.is_read)?.timestamp || new Date().toISOString();
+          const newEvent: NotificationEvent = {
+            id: Date.now(),
+            count: newSinceLastSeen,
+            timestamp: latestTimestamp,
+            label: `${newSinceLastSeen} anonymous profile visits made`,
+          };
+          setHistory((previous) => {
+            const next = [newEvent, ...previous.filter((entry) => entry.id !== newEvent.id)].slice(0, 6);
+            writeStoredHistory(next);
+            return next;
+          });
+        }
+      })
+      .catch(() => null);
+
+    const liveNotificationHandler = (notification: Notification) => {
+      console.debug('[socketio] live_notification received', notification);
+      setNotifications((items) => (items.some((item) => item.id === notification.id) ? items : [{ ...notification, is_read: false }, ...items]));
+      setPendingCount((current) => {
+        const next = Math.max(0, current + 1);
+        const event: NotificationEvent = {
+          id: Date.now(),
+          count: next,
+          timestamp: notification.timestamp || new Date().toISOString(),
+          label: `${next} anonymous profile visits made`,
+        };
+        setHistory((previous) => {
+          const nextHistory = [event, ...previous].slice(0, 6);
+          writeStoredHistory(nextHistory);
+          return nextHistory;
+        });
+        writePendingCount(next);
+        return next;
+      });
+    };
+
+    const readHandler = (data: any) => {
+      console.debug('[socketio] notifications_read received', data);
+      const unreadCount = Number.isFinite(Number(data?.unread_count ?? 0)) ? Number(data?.unread_count ?? 0) : 0;
+      setPendingCount(unreadCount);
+      writePendingCount(unreadCount);
+      setNotifications((items) => items.map((item) => ({ ...item, is_read: true })));
+    };
+
+    onNewNotification(liveNotificationHandler);
+    onNotificationsRead(readHandler);
+
+    const snapshotHandler = (data: any) => {
+      console.debug('[socketio] snapshotHandler received', data);
+
+      const serverNotifications = Array.isArray(data?.notifications) ? data.notifications : [];
+      const unreadFromServer = Number.isFinite(Number(data?.unread_count ?? 0)) ? Number(data?.unread_count ?? 0) : serverNotifications.filter((notification: Notification) => !notification.is_read).length;
+
+      setNotifications(serverNotifications);
+      setPendingCount(unreadFromServer);
+      writePendingCount(unreadFromServer);
+      console.debug('[ConsultancyNavbar] snapshot applied', serverNotifications.length, 'notifications, unread', unreadFromServer);
+
+      const lastSeenRaw = typeof window !== 'undefined' ? window.localStorage.getItem('consultancyNotificationLastSeenAt') : null;
+      const lastSeenAt = lastSeenRaw ? Date.parse(lastSeenRaw) : null;
+
+      const newSinceLastSeen = lastSeenAt
+        ? serverNotifications.filter((n: Notification) => {
+            const t = Date.parse(n.timestamp);
+            return !Number.isNaN(t) && t > lastSeenAt && !n.is_read;
+          }).length
+        : 0;
+
+      if (newSinceLastSeen > 0) {
+        const latestTimestamp = serverNotifications.find((n: Notification) => !n.is_read)?.timestamp || new Date().toISOString();
+        const newEvent: NotificationEvent = {
+          id: Date.now(),
+          count: newSinceLastSeen,
+          timestamp: latestTimestamp,
+          label: `${newSinceLastSeen} anonymous profile visits made`,
+        };
+        setHistory((previous) => {
+          const next = [newEvent, ...previous.filter((entry) => entry.id !== newEvent.id)].slice(0, 6);
+          writeStoredHistory(next);
+          return next;
+        });
+      }
+    };
+
+    onNotificationsSnapshot(snapshotHandler);
+
+    return () => {
+      offNewNotification(liveNotificationHandler);
+      offNotificationsRead(readHandler);
+      offNotificationsSnapshot(snapshotHandler);
+    };
   }, []);
 
   async function toggleNotifications() {
     const willOpen = !open;
     setOpen(willOpen);
-    if (willOpen && unread) {
+
+    if (willOpen) {
+      // mark local items as read immediately for optimistic UI
       setNotifications((items) => items.map((item) => ({ ...item, is_read: true })));
-      await API.post("notifications/").catch(() => null);
+      setPendingCount(0);
+      writePendingCount(0);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("consultancyNotificationLastSeenAt", new Date().toISOString());
+      }
+
+      // send mark-as-read request and update local state from server response when available
+      try {
+        const accessToken = typeof window !== "undefined"
+          ? window.localStorage.getItem("accessToken") || window.localStorage.getItem("access_token")
+          : null;
+
+        const resp = await API.post(
+          "notifications/mark-read/",
+          null,
+          {
+            headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+            withCredentials: true,
+          }
+        );
+
+        const serverNotifications = Array.isArray(resp?.data?.notifications) ? resp.data.notifications : [];
+        const serverUnread = Number.isFinite(Number(resp?.data?.unread_count ?? 0)) ? Number(resp.data.unread_count ?? 0) : serverNotifications.filter((n: Notification) => !n.is_read).length;
+        setNotifications(serverNotifications);
+        setPendingCount(serverUnread);
+        writePendingCount(serverUnread);
+
+        if (typeof window !== "undefined") {
+          const userJson = window.localStorage.getItem("authUser");
+          const userData = userJson ? JSON.parse(userJson) : null;
+          if (userData?.id) {
+            emitNotificationsRead(userData.id);
+          }
+        }
+      } catch (e) {
+        console.error('[ConsultancyNavbar] failed to mark notifications as read', e);
+      }
     }
   }
 
@@ -63,7 +268,16 @@ export default function ConsultancyNavbar({
           const raw = localStorage.getItem("authUser");
           if (!raw) return "";
           const u = JSON.parse(raw);
-          return u.office_name || u.first_name || u.username || u.email || "";
+          return (
+            u.display_name ||
+            u.full_name ||
+            u.fullName ||
+            u.office_name ||
+            u.first_name ||
+            u.username ||
+            u.email ||
+            ""
+          ).toString().trim();
         } catch (e) {
           return "";
         }
@@ -93,9 +307,47 @@ export default function ConsultancyNavbar({
           <div className="relative flex items-center gap-1">
             <button onClick={toggleNotifications} className="relative grid h-10 w-10 place-items-center rounded-full text-white/80 transition-colors hover:bg-white/5 hover:text-[#f97316]" aria-label="Visit notifications">
               <Bell className="h-5 w-5" />
-              {unread > 0 && <span className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-[#f97316] px-1 text-[10px] font-bold text-white">{unread}</span>}
+              {(unreadCount > 0 || notifications.length > 0) && (
+                <span className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-[#f97316] px-1 text-[10px] font-bold text-white">
+                  {unreadCount > 0 ? unreadCount : '•'}
+                </span>
+              )}
             </button>
-            {open && <div className="absolute right-0 top-12 z-50 w-80 border border-slate-200 bg-white p-4 text-[#0a1f44] shadow-xl"><div className="mb-3 flex items-center justify-between"><div><p className="font-semibold">Visit notifications</p><p className="text-xs text-slate-500">Your consultancy profile visits</p></div><Bell className="h-5 w-5 text-[#f97316]" /></div><div className="max-h-80 space-y-2 overflow-y-auto">{notifications.length ? notifications.map((notification) => <div key={notification.id} className="flex gap-3 border border-slate-200 bg-slate-50 p-3"><Hand className="mt-0.5 h-4 w-4 shrink-0 text-[#f97316]" /><div><p className="text-sm">{notification.message}</p><p className="mt-1 text-xs text-slate-500">{notification.timestamp}</p></div></div>) : <p className="py-8 text-center text-sm text-slate-500">No profile visits yet.</p>}</div></div>}
+            {open && (
+              <div className="absolute right-0 top-12 z-50 w-80 border border-slate-200 bg-white p-4 text-[#0a1f44] shadow-xl">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold">Visit notifications</p>
+                    <p className="text-xs text-slate-500">Your consultancy profile visits</p>
+                  </div>
+                  <Bell className="h-5 w-5 text-[#f97316]" />
+                </div>
+                <div className="max-h-80 space-y-2 overflow-y-auto">
+                  {notifications.length > 0 ? (
+                    notifications.map((notification) => (
+                      <div key={notification.id} className={`flex gap-3 border ${notification.is_read ? "border-slate-200 bg-slate-50" : "border-slate-300 bg-white"} p-3`}>
+                        <Hand className="mt-0.5 h-4 w-4 shrink-0 text-[#f97316]" />
+                        <div>
+                          <p className="text-sm">{notification.message}</p>
+                          <p className="mt-1 text-xs text-slate-500">{formatRelativeTime(notification.timestamp)}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : history.length ? (
+                    history.map((entry, index) => (
+                      <div key={entry.id} className="flex gap-3 border border-slate-200 bg-slate-50 p-3">
+                        <Hand className="mt-0.5 h-4 w-4 shrink-0 text-[#f97316]" />
+                        <div>
+                          <p className="text-sm">{index === 0 ? `${entry.count} new anonymous profile visits made` : `${entry.count} anonymous profile visits made`}</p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="py-8 text-center text-sm text-slate-500">No profile visits yet.</p>
+                  )}
+                </div>
+              </div>
+            )}
             <ProfileDropdown
               userName={userName}
               onSettingsClick={onOpenSettings}

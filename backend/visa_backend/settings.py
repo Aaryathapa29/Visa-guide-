@@ -147,6 +147,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:3000",
 ]
+CORS_ALLOW_CREDENTIALS = True
 
 # Chatbot / Groq LLM configuration (read from backend/.env).
 # The chatbot app (RAG + embeddings) uses these; see chatbot/services.py.
@@ -164,4 +165,9 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
+}
+
+# Configure Simple JWT to include custom claims (like role)
+SIMPLE_JWT = {
+    'TOKEN_OBTAIN_SERIALIZER': 'authentication.serializers.CustomTokenObtainPairSerializer',
 }

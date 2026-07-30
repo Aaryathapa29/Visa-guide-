@@ -36,11 +36,24 @@ export default function LoginPanel({ role, onBack, onSignUp, onForgotPassword, o
 
       if (response.status === 200) {
         const { access, refresh, user } = response.data;
+        const displayName =
+          user.first_name || user.office_name || user.display_name || user.full_name ||
+          user.fullName || user.username || user.email || "";
 
         localStorage.setItem("accessToken", access);
+        localStorage.setItem("access_token", access);
         localStorage.setItem("refreshToken", refresh);
+        localStorage.setItem("refresh_token", refresh);
         localStorage.setItem("authRole", user.role);
-        localStorage.setItem("authUser", JSON.stringify(user));
+        localStorage.setItem(
+          "authUser",
+          JSON.stringify({
+            ...user,
+            display_name: displayName,
+            full_name: displayName,
+            fullName: displayName,
+          })
+        );
 
         if (onLoginSuccess) {
           onLoginSuccess(user.role);

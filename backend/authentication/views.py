@@ -13,7 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from .models import ConsultancyCountryProfile, ConsultancyNotification, ConsultancyVisitNotification, LoginHistory, User
@@ -38,14 +38,37 @@ UserModel = get_user_model()
 
 
 def get_authenticated_user(request):
-    try:
-        jwt_user = JWTAuthentication().authenticate(request)
-    except Exception:
-        return None
+    auth_header = request.META.get("HTTP_AUTHORIZATION", "")
+    token_value = None
 
-    if jwt_user:
-        return jwt_user[0]
-    return request.user if getattr(request, 'user', None) and request.user.is_authenticated else None
+    if auth_header.startswith("Bearer "):
+        token_value = auth_header[len("Bearer "):].strip()
+    elif auth_header:
+        token_value = auth_header.strip()
+
+    if token_value:
+        try:
+            jwt_auth = JWTAuthentication()
+            validated_token = jwt_auth.get_validated_token(token_value)
+            user = jwt_auth.get_user(validated_token)
+
+            if not getattr(user, "is_active", True):
+                return None
+
+            payload = getattr(validated_token, "payload", {}) or {}
+            role_from_token = payload.get("role", getattr(user, "role", "student"))
+            if role_from_token:
+                user.role = role_from_token
+
+            return user
+        except Exception as exc:
+            print(f"JWT auth failed: {exc}")
+
+    user = request.user if getattr(request, "user", None) else None
+    if user and getattr(user, "is_authenticated", False) and getattr(user, "is_active", True):
+        return user
+
+    return None
 
 
 @csrf_exempt
@@ -92,6 +115,8 @@ def consultancy_signup(request):
     user.is_verified = False
     user.save(update_fields=['is_verified'])
 
+    display_name = user.office_name or user.username or user.email or ''
+
     return JsonResponse(
         {
             'detail': 'Consultancy account created successfully.',
@@ -101,6 +126,9 @@ def consultancy_signup(request):
                 'email': user.email,
                 'office_name': user.office_name,
                 'role': user.role,
+                'display_name': display_name,
+                'full_name': display_name,
+                'fullName': display_name,
             },
         },
         status=201,
@@ -126,14 +154,24 @@ def get_all_consultancies(request):
 
 
 @csrf_exempt
-def country_profiles(request):
+def country_profiles(request, profile_id=None):
     user = get_authenticated_user(request)
+    print(f"DEBUG country_profiles - user: {user}, role: {getattr(user, 'role', 'NONE')}")
 
     if request.method == 'GET':
-        if user and getattr(user, 'role', None) == 'consultancy':
+        # Support an explicit owner-only query for consultancy dashboards.
+        owner_only = request.GET.get('owner_only')
+
+        if owner_only and owner_only.lower() in ('1', 'true', 'yes'):
+            # When owner_only requested, require an authenticated consultancy user.
+            if not user or getattr(user, 'role', None) != 'consultancy':
+                return JsonResponse({'detail': 'Authentication required for owner-only country profiles.'}, status=401)
             profiles = ConsultancyCountryProfile.objects.filter(consultancy=user)
         else:
-            profiles = ConsultancyCountryProfile.objects.select_related('consultancy').all()
+            if user and getattr(user, 'role', None) == 'consultancy':
+                profiles = ConsultancyCountryProfile.objects.filter(consultancy=user)
+            else:
+                profiles = ConsultancyCountryProfile.objects.select_related('consultancy').all()
 
         return JsonResponse([
             {
@@ -147,10 +185,31 @@ def country_profiles(request):
             for profile in profiles
         ], safe=False, status=200)
 
+    if request.method == 'DELETE':
+        if profile_id is None:
+            return JsonResponse({'detail': 'Country profile ID is required.'}, status=400)
+
+        if not user or getattr(user, 'role', None) != 'consultancy':
+            return JsonResponse({'detail': 'Authentication required.'}, status=401)
+
+        try:
+            profile = ConsultancyCountryProfile.objects.get(pk=profile_id)
+        except ConsultancyCountryProfile.DoesNotExist:
+            return JsonResponse({'detail': 'Country profile not found.'}, status=404)
+
+        if profile.consultancy_id != getattr(user, 'id', None):
+            return JsonResponse({'detail': 'You do not have permission to delete this country profile.'}, status=403)
+
+        profile.delete()
+        return JsonResponse({'detail': 'Country profile deleted.'}, status=204)
+
     if request.method != 'PUT':
         return JsonResponse({'detail': 'Method not allowed.'}, status=405)
 
-    if not user or getattr(user, 'role', None) != 'consultancy':
+    user_role = getattr(user, 'role', None)
+    print(f"DEBUG PUT check - user: {user}, user_role: {user_role}, check result: {user_role != 'consultancy'}")
+    
+    if not user or user_role != 'consultancy':
         return JsonResponse({'detail': 'Only consultancy accounts can save country profiles.'}, status=403)
 
     try:
@@ -219,9 +278,12 @@ class RegisterView(APIView):
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            user = serializer.save()
             return Response(
-                {"message": "User registered successfully!"}, 
+                {
+                    "message": "User registered successfully!",
+                    "user": UserSerializer(user).data,
+                },
                 status=status.HTTP_201_CREATED
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -243,37 +305,43 @@ class PasswordResetRequestView(APIView):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        email = serializer.validated_data['email']
-
-        user = User.objects.filter(email__iexact=email).first()
-
-        if user:
-            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-            token = default_token_generator.make_token(user)
-            reset_url = (
-                f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:5173').rstrip('/')}"
-                f"/?uidb64={uidb64}&token={token}"
+        try:
+            user, uidb64, token = serializer.save()
+        except Exception as e:
+            print(f'Error in PasswordResetRequestSerializer.save(): {e}')
+            return Response(
+                {'detail': 'An error occurred processing your request.'},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-            resend.api_key = os.environ.get('RESEND_API_KEY')
-            if not resend.api_key:
-                return Response(
-                    {'detail': 'Password reset email service is not configured.'},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        reset_url = (
+            f"{getattr(settings, 'FRONTEND_URL', 'http://localhost:5173').rstrip('/')}"
+            f"/?uidb64={uidb64}&token={token}"
+        )
+
+        # Try to send email, but don't fail if service is unavailable
+        resend_api_key = os.environ.get('RESEND_API_KEY')
+        if resend_api_key:
+            try:
+                resend.api_key = resend_api_key
+                resend.Emails.send(
+                    {
+                        'from': 'onboarding@resend.dev',
+                        'to': [user.email],
+                        'subject': 'Reset your Visa Guide password',
+                        'html': (
+                            '<p>We received a request to reset your password.</p>'
+                            f'<p><a href="{reset_url}">Reset your password</a></p>'
+                            '<p>If you did not request this, you can ignore this email.</p>'
+                        ),
+                    }
                 )
-
-            resend.Emails.send(
-                {
-                    'from': 'onboarding@resend.dev',
-                    'to': [user.email],
-                    'subject': 'Reset your Visa Guide password',
-                    'html': (
-                        '<p>We received a request to reset your password.</p>'
-                        f'<p><a href="{reset_url}">Reset your password</a></p>'
-                        '<p>If you did not request this, you can ignore this email.</p>'
-                    ),
-                }
-            )
+                print(f'Password reset email sent to {user.email}')
+            except Exception as e:
+                print(f'Warning: Failed to send password reset email: {e}')
+                # Don't fail the entire request if email sending fails
+        else:
+            print('Warning: RESEND_API_KEY not configured; password reset email not sent')
 
         return Response(
             {'message': 'If an account exists, a reset link has been sent.'},
@@ -315,19 +383,32 @@ def log_consultancy_visit(request):
         return JsonResponse({'detail': 'Consultancy not found.'}, status=404)
 
     visitor = get_authenticated_user(request)
+    # Debug logging to help diagnose missing visit records (e.g., incognito requests)
+    try:
+        print(f"DEBUG log_consultancy_visit - headers Authorization: {request.META.get('HTTP_AUTHORIZATION')}")
+        print(f"DEBUG log_consultancy_visit - remote addr: {request.META.get('REMOTE_ADDR')}")
+        print(f"DEBUG log_consultancy_visit - resolved visitor: {getattr(visitor, 'id', None)}")
 
-    notification = ConsultancyVisitNotification.objects.create(
-        consultancy=consultancy,
-        visitor=visitor,
-    )
+        notification = ConsultancyVisitNotification.objects.create(
+            consultancy=consultancy,
+            visitor=visitor,
+            is_read=False,
+        )
+        # Ensure the object is written and refreshed from DB
+        notification.refresh_from_db()
+    except Exception as e:
+        print(f"ERROR: Failed to create ConsultancyVisitNotification: {e}")
+        return JsonResponse({'detail': 'Failed to log visit.'}, status=500)
 
     # Emit real-time notification via Socket.IO
     if socketio_available:
         try:
             notification_data = {
                 'id': notification.id,
+                'visitor_name': 'Anonymous visitor',
                 'message': 'A user visited your profile page.',
-                'timestamp': notification.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                'timestamp': notification.timestamp.isoformat(),
+                'is_read': notification.is_read,
             }
             emit_notification_to_consultancy(consultancy_id, notification_data)
         except Exception as e:
@@ -340,13 +421,15 @@ def log_consultancy_visit(request):
                 'id': notification.id,
                 'consultancy_id': notification.consultancy_id,
                 'visitor_id': notification.visitor_id,
-                'timestamp': notification.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                'timestamp': notification.timestamp.isoformat(),
+                'is_read': notification.is_read,
             },
         },
         status=201,
     )
 
 
+@csrf_exempt
 def get_consultancy_notifications(request):
     if request.method not in ('GET', 'POST'):
         return JsonResponse({'detail': 'Method not allowed.'}, status=405)
@@ -359,19 +442,100 @@ def get_consultancy_notifications(request):
         ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).update(is_read=True)
 
     notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
+    unread_count = ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).count()
 
     payload = [
         {
             'id': notification.id,
             'visitor_name': 'Anonymous visitor',
             'message': 'A user visited your profile page.',
-            'timestamp': notification.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            'timestamp': notification.timestamp.isoformat(),
             'is_read': notification.is_read,
         }
         for notification in notifications
     ]
 
-    return JsonResponse({'notifications': payload, 'unread_count': sum(not item['is_read'] for item in payload)}, status=200)
+    return JsonResponse({'notifications': payload, 'unread_count': unread_count}, status=200)
+    
+class ConsultancyNotificationsView(APIView):
+    """Notifications endpoint for consultancies.
+
+    Uses JWT authentication and DRF permissions so CSRF is not required.
+    """
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        if not user or getattr(user, 'role', None) != 'consultancy':
+            return Response({'detail': 'Only consultancy accounts can access notifications.'}, status=403)
+
+        notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
+        unread_count = ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).count()
+
+        payload = [
+            {
+                'id': notification.id,
+                'visitor_name': 'Anonymous visitor',
+                'message': 'A user visited your profile page.',
+                'timestamp': notification.timestamp.isoformat(),
+                'is_read': notification.is_read,
+            }
+            for notification in notifications
+        ]
+
+        return Response({'notifications': payload, 'unread_count': unread_count}, status=200)
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        if not user or getattr(user, 'role', None) != 'consultancy':
+            return Response({'detail': 'Only consultancy accounts can access notifications.'}, status=403)
+
+        ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).update(is_read=True)
+
+        # Return the updated list
+        notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
+        unread_count = ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).count()
+        payload = [
+            {
+                'id': notification.id,
+                'visitor_name': 'Anonymous visitor',
+                'message': 'A user visited your profile page.',
+                'timestamp': notification.timestamp.isoformat(),
+                'is_read': notification.is_read,
+            }
+            for notification in notifications
+        ]
+
+        return Response({'notifications': payload, 'unread_count': unread_count}, status=200)
+
+
+class MarkNotificationsReadView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        if not user or getattr(user, 'role', None) != 'consultancy':
+            return Response({'detail': 'Only consultancy accounts can access notifications.'}, status=403)
+
+        ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).update(is_read=True)
+
+        notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
+        unread_count = ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).count()
+
+        payload = [
+            {
+                'id': notification.id,
+                'visitor_name': 'Anonymous visitor',
+                'message': 'A user visited your profile page.',
+                'timestamp': notification.timestamp.isoformat(),
+                'is_read': notification.is_read,
+            }
+            for notification in notifications
+        ]
+
+        return Response({'notifications': payload, 'unread_count': unread_count}, status=200)
 
 
 class CheckEmailView(APIView):
@@ -397,29 +561,40 @@ class CheckEmailView(APIView):
 class UpdateProfileView(APIView):
     def patch(self, request):
         user = get_authenticated_user(request)
-        
+
         if not user:
             return Response(
                 {'detail': 'Authentication required.'},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-        
-        name = request.data.get('name', '').strip()
-        password = request.data.get('password', '').strip()
-        
-        # Update name if provided
+
+        name = (request.data.get('name') or '').strip()
+        password = (request.data.get('password') or '').strip()
+        current_password = (request.data.get('current_password') or '').strip()
+
         if name:
             if user.role == 'consultancy':
                 user.office_name = name
             else:
                 user.first_name = name
-        
-        # Update password if provided
+
         if password:
+            if not current_password:
+                return Response(
+                    {'detail': 'Current password is required to change your password.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if not user.check_password(current_password):
+                return Response(
+                    {'detail': 'Current password is incorrect.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             user.set_password(password)
-        
+
         user.save()
-        
+
         return Response(
             {
                 'detail': 'Profile updated successfully.',
@@ -432,21 +607,55 @@ class UpdateProfileView(APIView):
 class DeleteAccountView(APIView):
     def delete(self, request):
         user = get_authenticated_user(request)
-        
+
         if not user:
             return Response(
                 {'detail': 'Authentication required.'},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-        
+
+        requested_user_id = request.data.get('user_id') or request.query_params.get('user_id')
+        if requested_user_id is not None:
+            try:
+                requested_user_id = int(requested_user_id)
+            except (ValueError, TypeError):
+                return Response(
+                    {'detail': 'Invalid user ID provided.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if requested_user_id != user.id:
+                return Response(
+                    {'detail': 'You are not authorized to delete this account.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
         try:
-            user.delete()
+            user.is_active = False
+            user.is_verified = False
+            user.first_name = ''
+            user.last_name = ''
+            user.office_name = ''
+            user.username = f"deleted_user_{user.id}"
+            user.email = f"deleted_user_{user.id}@example.invalid"
+            user.set_unusable_password()
+            user.save(update_fields=[
+                'is_active',
+                'is_verified',
+                'first_name',
+                'last_name',
+                'office_name',
+                'username',
+                'email',
+                'password',
+            ])
+
             return Response(
                 {'detail': 'Account deleted successfully.'},
-                status=status.HTTP_204_NO_CONTENT,
+                status=status.HTTP_200_OK,
             )
-        except Exception as e:
+        except Exception:
             return Response(
-                {'detail': f'Error deleting account: {str(e)}'},
-                status=status.HTTP_400_BAD_REQUEST,
+                {'detail': 'An error occurred while deleting the account. Please try again later.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )

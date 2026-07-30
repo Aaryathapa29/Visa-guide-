@@ -114,8 +114,12 @@ export default function DocumentParser({ onClose }: { onClose: () => void }) {
      
                      {/* Error display */}
       {error && (
+<<<<<<< HEAD
         <div
           className="rounded-xl p-4 text-sm space-y-2"
+=======
+        <div className="rounded-xl p-4 text-sm space-y-2"
+>>>>>>> 236eb7d7115afd60abcdddca230e43ddb90c7830
           style={{ background: "#fef2f2", border: "1px solid #fecaca" }}
         >
           {isUnsupportedDoc(error) ? (

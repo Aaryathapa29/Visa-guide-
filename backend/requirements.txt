@@ -7,6 +7,9 @@ django-jazzmin
 resend
 djangorestframework
 djangorestframework-simplejwt
+python-socketio
+aiohttp
+aiohttp-cors
 
 # Chatbot (RAG) dependencies, merged from ModelInference.
 # Heavy libs (torch comes in via sentence-transformers) load lazily on first
@@ -16,3 +19,4 @@ chromadb
 sentence-transformers
 pypdf
 numpy
+

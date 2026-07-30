@@ -22,6 +22,7 @@ from groq import Groq
 from pydantic import BaseModel
 from psycopg2.extras import RealDictCursor
 import psycopg2
+import pdfplumber
 
 from rag import RAGEngine, detect_country
 

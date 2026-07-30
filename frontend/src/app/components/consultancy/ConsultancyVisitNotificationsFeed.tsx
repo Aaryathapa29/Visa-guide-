@@ -18,6 +18,12 @@ export default function ConsultancyVisitNotificationsFeed() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const rawAuthUser = typeof window !== "undefined" ? window.localStorage.getItem("authUser") : null;
+    if (!rawAuthUser) return;
+
+    const parsedAuthUser = JSON.parse(rawAuthUser);
+    if (!parsedAuthUser?.id || parsedAuthUser.role !== "consultancy") return;
+
     let mounted = true;
 
     async function loadNotifications() {
@@ -87,9 +93,7 @@ export default function ConsultancyVisitNotificationsFeed() {
                 <p className="text-sm font-medium" style={{ color: DARK }}>
                   {notification.message}
                 </p>
-                <p className="text-xs mt-1" style={{ color: "#5a6e8a" }}>
-                  {notification.timestamp}
-                </p>
+                {/* timestamp removed per UI update: only show descriptive message */}
               </div>
             </div>
           ))}

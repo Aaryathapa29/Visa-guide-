@@ -11,7 +11,7 @@ load_dotenv()
 
 # Create Socket.IO client
 sio_client = socketio.Client()
-SOCKETIO_SERVER_URL = os.getenv('SOCKETIO_SERVER_URL', 'http://localhost:5000')
+SOCKETIO_SERVER_URL = os.getenv('SOCKETIO_SERVER_URL', 'http://localhost:8003')
 
 
 def ensure_connected():

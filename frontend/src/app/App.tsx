@@ -1,5 +1,5 @@
-import DocumentParser from "./components/DocumentParser/DocumentParser";
 import { useEffect, useState } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Screen } from "./components/ui/theme";
 import RoleSelection from "./components/auth/RoleSelection";
 import AspirantSignupForm from "./components/auth/AspirantSignupForm";
@@ -11,12 +11,34 @@ import SplitFormLayout from "./components/auth/SplitFormLayout";
 import VisaAspirantHome from "./components/VisaAspirantHome";
 import ConsultancyHome from "./components/ConsultancyHome";
 import ConsultancyProfilePage from "./components/aspirant/ConsultancyProfilePage";
+import CountryProfileDetailPage from "./components/aspirant/CountryProfileDetailPage";
+import AspirantLayout from "./components/aspirant/AspirantLayout";
+import VisaChatbot from "./components/chatbot/VisaChatbot";
+import DocumentAnalysisCard from "./components/aspirant/DocumentAnalysisCard";
+import AccountSettings from "./components/pages/AccountSettings";
+
+function RouteConsultancyProfilePage() {
+  const { consultancyId } = useParams();
+  return <ConsultancyProfilePage consultancyId={Number(consultancyId)} />;
+}
+
+function RouteCountryProfilePage() {
+  const { consultancyId, countrySlug } = useParams();
+  return <CountryProfileDetailPage consultancyId={Number(consultancyId)} countrySlug={countrySlug ?? ""} />;
+}
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("selection");
   const [resetRole, setResetRole] = useState<"aspirant" | "consultancy">("aspirant");
   const [resetUidb64, setResetUidb64] = useState("");
   const [resetToken, setResetToken] = useState("");
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const accessToken = localStorage.getItem("accessToken");
+  const authRole = localStorage.getItem("authRole");
+  const isAspirantAuthenticated = Boolean(accessToken && authRole === "student");
+  const isConsultancyAuthenticated = Boolean(accessToken && authRole === "consultancy");
 
   useEffect(() => {
     const savedToken = localStorage.getItem("accessToken");
@@ -40,17 +62,39 @@ export default function App() {
     }
   }, []);
 
-  const consultancyProfileMatch = window.location.pathname.match(/^\/consultancies\/(\d+)\/?$/);
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("authRole");
+    localStorage.removeItem("authUser");
+    setScreen("selection");
+    navigate("/");
+  };
 
-  if (consultancyProfileMatch) {
-    return <ConsultancyProfilePage consultancyId={Number(consultancyProfileMatch[1])} />;
+  if (
+    isAspirantAuthenticated &&
+    (location.pathname === "/" ||
+      location.pathname.startsWith("/chatbot") ||
+      location.pathname.startsWith("/document-analyzer") ||
+      location.pathname.startsWith("/settings") ||
+      location.pathname.startsWith("/consultancies"))
+  ) {
+    return (
+      <Routes>
+        <Route element={<AspirantLayout onLogout={handleLogout} />} path="/">
+          <Route index element={<VisaAspirantHome />} />
+          <Route path="chatbot" element={<VisaChatbot onClose={() => navigate("/")} />} />
+          <Route path="document-analyzer" element={<DocumentAnalysisCard onClose={() => navigate("/")} />} />
+          <Route path="settings" element={<AccountSettings userRole="aspirant" userName={(() => { try { const raw = localStorage.getItem("authUser"); if (!raw) return ""; const u = JSON.parse(raw); return (u.display_name || u.full_name || u.fullName || u.first_name || u.username || u.email || "").toString().trim(); } catch { return ""; } })()} onBack={() => navigate("/")} onAccountDeleted={handleLogout} />} />
+          <Route path="consultancies/:consultancyId" element={<RouteConsultancyProfilePage />} />
+          <Route path="consultancies/:consultancyId/countries/:countrySlug" element={<RouteCountryProfilePage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    );
   }
 
-  if (screen === "aspirant-home") {
-    return <VisaAspirantHome />;
-  }
-
-  if (screen === "consultancy-home") {
+  if (screen === "consultancy-home" || isConsultancyAuthenticated) {
     return <ConsultancyHome />;
   }
 
@@ -134,6 +178,7 @@ export default function App() {
             onLoginSuccess={() => {
               localStorage.setItem("authRole", "student");
               setScreen("aspirant-home");
+              navigate("/");
             }}
           />
         </SplitFormLayout>
@@ -152,6 +197,7 @@ export default function App() {
             onLoginSuccess={() => {
               localStorage.setItem("authRole", "consultancy");
               setScreen("consultancy-home");
+              navigate("/");
             }}
           />
         </SplitFormLayout>

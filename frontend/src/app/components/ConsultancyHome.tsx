@@ -15,7 +15,8 @@ export default function ConsultancyHome() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem("authUser");
-      if (raw) {
+      const accessToken = localStorage.getItem("accessToken");
+      if (raw && accessToken) {
         const user = JSON.parse(raw);
         if (user && user.role === "consultancy") {
           // lazy import to avoid loading socket client for non-consultancy pages
@@ -48,7 +49,9 @@ export default function ConsultancyHome() {
       const raw = localStorage.getItem("authUser");
       if (!raw) return "";
       const u = JSON.parse(raw);
-      return u.username || u.first_name || u.email || "";
+      return (
+        u.display_name || u.first_name || u.username || u.email || ""
+      ).toString().trim();
     } catch (e) {
       return "";
     }

@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Building2, Mail, Info, Loader2, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, ArrowRight, Globe2, AlertCircle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import API from "../../../api";
+import LoadingState from "../ui/LoadingState";
 
 type Consultancy = {
   id: number;
@@ -9,8 +11,23 @@ type Consultancy = {
   office_name: string | null;
 };
 
+type CountryProfile = {
+  id: number;
+  country: string;
+  documents: string;
+  instructions: string;
+  consultancy_id: number;
+  consultancy_name: string;
+};
+
+function slugify(value: string) {
+  return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
 export default function ConsultancyProfilePage({ consultancyId }: { consultancyId: number }) {
+  const navigate = useNavigate();
   const [consultancy, setConsultancy] = useState<Consultancy | null>(null);
+  const [countryProfiles, setCountryProfiles] = useState<CountryProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -22,8 +39,9 @@ export default function ConsultancyProfilePage({ consultancyId }: { consultancyI
       setError("");
 
       try {
-        const [consultanciesResponse] = await Promise.all([
+        const [consultanciesResponse, profilesResponse] = await Promise.all([
           API.get("consultancies/"),
+          API.get("country-profiles/"),
           API.post("log-visit/", { consultancy_id: consultancyId }).catch(() => null),
         ]);
 
@@ -31,12 +49,17 @@ export default function ConsultancyProfilePage({ consultancyId }: { consultancyI
 
         const consultancies = Array.isArray(consultanciesResponse.data) ? consultanciesResponse.data : [];
         const selected = consultancies.find((item: Consultancy) => Number(item.id) === Number(consultancyId));
+        const profiles = Array.isArray(profilesResponse.data)
+          ? profilesResponse.data.filter((profile: CountryProfile) => Number(profile.consultancy_id) === Number(consultancyId))
+          : [];
 
         if (!selected) {
           setError("Consultancy profile not found.");
           setConsultancy(null);
+          setCountryProfiles([]);
         } else {
           setConsultancy(selected);
+          setCountryProfiles(profiles);
         }
       } catch {
         if (mounted) {
@@ -54,22 +77,17 @@ export default function ConsultancyProfilePage({ consultancyId }: { consultancyI
     };
   }, [consultancyId]);
 
-  const hasEmptyProfile = useMemo(() => {
-    if (!consultancy) return true;
-    return !consultancy.office_name?.trim();
-  }, [consultancy]);
-
   return (
     <div className="min-h-screen" style={{ background: "#f0f4f8" }}>
-      <header className="sticky top-0 z-20 backdrop-blur border-b" style={{ background: "rgba(240,244,248,0.92)", borderColor: "#dce6f5" }}>
-        <div className="max-w-5xl mx-auto px-4 md:px-8 py-4 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-20 border-b backdrop-blur" style={{ background: "rgba(240,244,248,0.92)", borderColor: "#dce6f5" }}>
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 md:px-8">
           <button
             type="button"
-            onClick={() => (window.location.href = "/")}
+            onClick={() => navigate("/")}
             className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors hover:opacity-90"
             style={{ background: "#eef2fb", color: "#0d1b3e" }}
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="h-4 w-4" />
             Back
           </button>
           <div className="text-right">
@@ -79,65 +97,66 @@ export default function ConsultancyProfilePage({ consultancyId }: { consultancyI
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 md:px-8 py-8 space-y-6">
+      <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 md:px-8">
         {loading ? (
-          <div className="rounded-3xl bg-white border p-10 text-center" style={{ borderColor: "#dce6f5" }}>
-            <Loader2 className="w-10 h-10 animate-spin mx-auto" style={{ color: "#2563eb" }} />
-            <h1 className="font-bold mt-4" style={{ color: "#0d1b3e", fontSize: "1.2rem" }}>Loading consultancy profile</h1>
-            <p className="mt-2 text-sm" style={{ color: "#5a6e8a" }}>Fetching profile details and logging the visit.</p>
-          </div>
+          <LoadingState
+            title="Loading consultancy profile"
+            message="Fetching profile details and logging the visit."
+          />
         ) : error ? (
-          <div className="rounded-3xl bg-white border p-10 text-center" style={{ borderColor: "#dce6f5" }}>
-            <AlertCircle className="w-10 h-10 mx-auto" style={{ color: "#dc2626" }} />
-            <h1 className="font-bold mt-4" style={{ color: "#0d1b3e", fontSize: "1.2rem" }}>{error}</h1>
+          <div className="rounded-3xl border bg-white p-10 text-center" style={{ borderColor: "#dce6f5" }}>
+            <AlertCircle className="mx-auto h-10 w-10" style={{ color: "#dc2626" }} />
+            <h1 className="mt-4 font-bold" style={{ color: "#0d1b3e", fontSize: "1.2rem" }}>{error}</h1>
             <p className="mt-2 text-sm" style={{ color: "#5a6e8a" }}>Please go back and try another consultancy.</p>
           </div>
         ) : (
           <>
-            <section className="rounded-3xl bg-white border p-6 md:p-8 space-y-6" style={{ borderColor: "#dce6f5" }}>
-              <div className="flex items-start gap-4">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: "#eef2fb" }}>
-                  <Building2 className="w-7 h-7" style={{ color: "#2563eb" }} />
+            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_10px_40px_-18px_rgba(10,31,68,.24)] md:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-5">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[.24em] text-[#f97316]">Country guidance</p>
+                  <h2 className="mt-2 text-2xl font-medium text-slate-900 sm:text-3xl">
+                    {consultancy?.office_name || consultancy?.username || "Consultancy"}
+                  </h2>
                 </div>
-                <div className="min-w-0">
-                  <h1 className="font-bold truncate" style={{ color: "#0d1b3e", fontSize: "1.5rem" }}>
-                    {consultancy?.office_name || consultancy?.username || "Consultancy Profile"}
-                  </h1>
-                  <p className="text-sm mt-1" style={{ color: "#5a6e8a" }}>
-                    Public consultancy profile details
-                  </p>
+                <div className="rounded-full bg-[#f8fbff] px-3 py-1 text-sm font-semibold text-[#0a1f44]">
+                  {countryProfiles.length} published
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-2xl p-4" style={{ background: "#fafdff", border: "1px solid #dce6f5" }}>
-                  <div className="text-xs uppercase tracking-wider mb-2" style={{ color: "#2563eb" }}>Office Name</div>
-                  <div className="font-semibold" style={{ color: "#0d1b3e" }}>
-                    {consultancy?.office_name || "Not provided yet"}
-                  </div>
+              {countryProfiles.length === 0 ? (
+                <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm leading-7 text-slate-700">
+                  This consultancy has not published any country profiles yet.
                 </div>
-                <div className="rounded-2xl p-4" style={{ background: "#fafdff", border: "1px solid #dce6f5" }}>
-                  <div className="text-xs uppercase tracking-wider mb-2" style={{ color: "#2563eb" }}>Username</div>
-                  <div className="font-semibold" style={{ color: "#0d1b3e" }}>{consultancy?.username}</div>
-                </div>
-                <div className="rounded-2xl p-4 md:col-span-2" style={{ background: "#fafdff", border: "1px solid #dce6f5" }}>
-                  <div className="text-xs uppercase tracking-wider mb-2" style={{ color: "#2563eb" }}>Email</div>
-                  <div className="inline-flex items-center gap-2 font-semibold" style={{ color: "#0d1b3e" }}>
-                    <Mail className="w-4 h-4" style={{ color: "#5a6e8a" }} />
-                    {consultancy?.email}
-                  </div>
-                </div>
-              </div>
-
-              {hasEmptyProfile && (
-                <div className="rounded-2xl p-5" style={{ background: "#eff6ff", border: "1px solid #bfdbfe" }}>
-                  <div className="inline-flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: "#1d4ed8" }}>
-                    <Info className="w-4 h-4" />
-                    Profile information is currently empty
-                  </div>
-                  <p style={{ color: "#1e3a8a", fontSize: "0.95rem", lineHeight: 1.7 }}>
-                    Profile information is currently empty. This consultancy has not provided further information yet.
-                  </p>
+              ) : (
+                <div className="mt-6 grid gap-4 md:grid-cols-2">
+                  {countryProfiles.map((profile) => {
+                    const countryRoute = `/consultancies/${consultancyId}/countries/${encodeURIComponent(slugify(profile.country))}`;
+                    return (
+                      <button
+                        key={profile.id}
+                        type="button"
+                        onClick={() => {
+                          navigate(countryRoute);
+                        }}
+                        className="group rounded-[1.5rem] border border-slate-200 bg-[#f8fbff] p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:border-[#f97316] hover:bg-[#fff8f1] hover:shadow-[0_20px_45px_-20px_rgba(10,31,68,.35)]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="grid h-11 w-11 place-items-center rounded-full bg-white text-[#f97316] shadow-sm transition group-hover:scale-105">
+                            <Globe2 className="h-5 w-5" />
+                          </span>
+                          <div>
+                            <h3 className="text-lg font-semibold text-[#0a1f44]">{profile.country}</h3>
+                            <p className="text-sm text-slate-600">View visa details and instructions</p>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex items-center justify-end text-[11px] font-bold uppercase tracking-[.16em] text-[#0a1f44] transition-all group-hover:text-[#f97316]">
+                          Open details
+                          <ArrowRight className="ml-1 h-4 w-4" />
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </section>

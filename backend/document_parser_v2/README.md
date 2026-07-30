@@ -1,71 +1,67 @@
-# Document Parser v2 — LanguageTool + spaCy + AI (hybrid)
+# Person B - Document parser work area
 
-## Why this version
-- LanguageTool = free, rule-based grammar/spelling/punctuation engine (self-hosted, no per-request cost)
-- spaCy = free, fast checks for visa-specific structure (dates, money, countries)
-- AI (GPT-4o-mini) = only used for tone + "does this sound convincing to a visa officer" — the one thing rule-based tools can't judge
+This folder is reserved for the document parser stream owned by Person B.
 
-This way you only pay for AI calls on the part AI is actually good at, and get
-real grammar-rule accuracy (not an LLM guessing) for the rest.
+The live document parser implementation remains in the existing backend module:
+- backend/document_parser_v2/
 
-## Step-by-step setup
+## Local setup
 
-### 1. Install Docker Desktop (if you don't have it)
+### 1. Install Docker Desktop (if you want Grammar API checks)
 https://www.docker.com/products/docker-desktop/
 
-### 2. Start your own free LanguageTool grammar server
+### 2. Start the LanguageTool grammar server
 ```bash
-cd document_parser_v2
+cd backend/document_parser_v2
 docker compose up -d
 ```
-Check it's running: open http://localhost:8010 in your browser — you should see a LanguageTool page.
+Check it is running by opening http://localhost:8010.
 
 ### 3. Set up the Python backend
 ```bash
+cd backend/document_parser_v2
 python -m pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 cp .env.example .env
 ```
-Open `.env` and paste your OpenAI key (only needed for the tone/visa-persuasiveness part).
+Open `.env` and add your Gemini key if you want AI tone and visa analysis.
 
 ### 4. Run the API
 ```bash
+cd backend/document_parser_v2
 uvicorn main:app --reload --port 8002
 ```
 
 ### 5. Test it
-```
+```bash
 GET http://localhost:8002/api/v1/analyze/demo
 ```
-or open http://localhost:8002/docs for the interactive Swagger UI.
+Or open http://localhost:8002/docs for the Swagger UI.
 
 ## Folder structure
-```
+```text
 document_parser_v2/
-├── docker-compose.yml      ← starts your own LanguageTool server
+├── docker-compose.yml
 ├── main.py
 ├── requirements.txt
 ├── .env.example
 └── app/
     ├── schemas.py
     ├── routers/
-    │   └── documents.py    ← combines LanguageTool + spaCy + AI
+    │   └── documents.py
     └── services/
-        ├── extractor.py        ← PDF/DOCX/TXT text extraction (unchanged)
-        ├── nlp_processor.py    ← spaCy structure checks (unchanged)
-        ├── grammar_checker.py  ← NEW: calls LanguageTool
-        └── ai_analyzer.py      ← CHANGED: tone + visa issues only, no grammar
+        ├── extractor.py
+        ├── nlp_processor.py
+        ├── grammar_checker.py
+        └── ai_analyzer.py
 ```
 
 ## Frontend
-No changes needed — same response shape (`grammar_errors`, `visa_checklist`,
-`tone_analysis`, etc.) as before, so your existing `lib/analyzeDocument.ts` and
-all the components you already built keep working as-is.
+The frontend can continue to use the same response shape for grammar errors, visa checks, tone analysis, and strengths/improvements.
 
-## If you don't want to use Docker
+## If you do not want to use Docker
 You can point `LT_API_URL` in `.env` to the public LanguageTool API instead:
-```
+```bash
 LT_API_URL=https://api.languagetool.org/v2/check
 ```
-This skips Docker entirely but is rate-limited (~20 requests/minute, 20k
-characters per request) — fine for a college project demo, not for real traffic.
+This is rate-limited, so it is best for demos rather than heavy traffic.

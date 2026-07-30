@@ -8,7 +8,9 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-BACKEND_DIR = Path(__file__).resolve().parent.parent
+PARSER_DIR = Path(__file__).resolve().parent
+BACKEND_DIR = PARSER_DIR.parent
+load_dotenv(PARSER_DIR / ".env")
 load_dotenv(BACKEND_DIR / ".env")
 
 from fastapi import FastAPI

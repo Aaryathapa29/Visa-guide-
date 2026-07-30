@@ -91,3 +91,9 @@ Thumbs.db
 
 # OS files
 .DS_Store
+backend/document_parser_v2/venv/
+backend/document_parser_v2/.venv/
+backend/document_parser_v2/venv/
+backend/document_parser_v2/.venv/
+venv/
+.venv/

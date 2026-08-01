@@ -112,7 +112,12 @@ export default function DocumentParser({ onClose }: { onClose: () => void }) {
 
       {/* Error display */}
       {error && (
+<<<<<<< Updated upstream
         <div className="rounded-xl p-4 text-sm space-y-2"
+=======
+        <div
+          className="rounded-xl p-4 text-sm space-y-2"
+>>>>>>> Stashed changes
           style={{ background: "#fef2f2", border: "1px solid #fecaca" }}
         >
           {isUnsupportedDoc(error) ? (

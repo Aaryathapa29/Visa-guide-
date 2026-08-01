@@ -77,6 +77,8 @@ export async function analyzeFile(file: File): Promise<AnalysisResult> {
   const res = await fetch(`${PARSER_URL}/api/v1/analyze/file`, {
     method: "POST",
     body: form,
+    // Do NOT set Content-Type header manually here,
+    // fetch sets it automatically with the correct boundary for FormData
   });
 >>>>>>> 236eb7d7115afd60abcdddca230e43ddb90c7830
 

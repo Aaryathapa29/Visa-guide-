@@ -13,8 +13,8 @@ function slugify(value: string) {
 
 export function BrowseToggle({ view, onChange }: { view: BrowseView; onChange: (view: BrowseView) => void }) {
   const tabs = [{ value: "consultancies" as const, label: "By Consultancy", icon: Building2 }, { value: "countries" as const, label: "By Country", icon: Globe2 }];
-  return <div className="inline-flex gap-1 border border-slate-200 bg-white p-1.5 shadow-[0_4px_20px_-8px_rgba(10,31,68,.12)]" role="tablist">
-    {tabs.map((tab) => { const Icon = tab.icon; const active = view === tab.value; return <button key={tab.value} onClick={() => onChange(tab.value)} className={`inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-[.14em] transition-colors sm:px-6 ${active ? "bg-[#0a1f44] text-white" : "text-slate-600 hover:text-[#0a1f44]"}`}><Icon className="h-4 w-4" />{tab.label}</button>; })}
+  return <div className="inline-flex gap-1 rounded-[16px] border border-slate-200 bg-white/90 p-1.5 shadow-[0_8px_24px_-14px_rgba(10,31,68,.16)]" role="tablist">
+    {tabs.map((tab) => { const Icon = tab.icon; const active = view === tab.value; return <button key={tab.value} onClick={() => onChange(tab.value)} className={`inline-flex items-center gap-2 rounded-[12px] px-4 py-2.5 text-xs font-bold uppercase tracking-[.14em] transition-all duration-200 sm:px-6 ${active ? "bg-[linear-gradient(135deg,#0a1f44_0%,#2563eb_100%)] text-white shadow-[0_8px_18px_-10px_rgba(10,31,68,0.35)]" : "text-slate-600 hover:bg-slate-50 hover:text-[#0a1f44]"}`}><Icon className="h-4 w-4" />{tab.label}</button>; })}
   </div>;
 }
 
@@ -76,9 +76,9 @@ export default function CountryBrowseGrid() {
             onClick={() => {
               navigate(countryRoute);
             }}
-            className="group border border-slate-200 bg-white p-6 text-left transition-all duration-300 hover:-translate-y-1 hover:border-[#0a1f44] hover:shadow-[0_20px_50px_-20px_rgba(10,31,68,.35)]"
+            className="group rounded-[20px] border border-slate-200/80 bg-[linear-gradient(135deg,#ffffff_0%,#f8fbff_100%)] p-6 text-left shadow-[0_12px_32px_-18px_rgba(10,31,68,0.25)] transition-all duration-300 hover:-translate-y-1.5 hover:scale-[1.01] hover:border-slate-300 hover:shadow-[0_20px_42px_-18px_rgba(10,31,68,0.34)]"
           >
-            <span className="grid h-12 w-12 place-items-center rounded-full bg-slate-100 text-[#f97316] transition group-hover:bg-[#fff4ea]">
+            <span className="grid h-12 w-12 place-items-center rounded-full bg-[#eef4ff] text-[#0a1f44] transition group-hover:bg-[#0a1f44] group-hover:text-white">
               <Globe2 className="h-6 w-6" />
             </span>
             <h3 className="aspirant-serif mt-5 text-2xl text-[#0a1f44]">{profile.country}</h3>
@@ -86,7 +86,7 @@ export default function CountryBrowseGrid() {
             <p className="mt-5 border-t border-slate-200 pt-4 text-sm leading-7 text-slate-700">
               Open the full country guidance page for documents, instructions, and next steps.
             </p>
-            <div className="mt-6 flex items-center justify-end text-[11px] font-bold uppercase tracking-[.16em] text-[#0a1f44] transition-all group-hover:text-[#f97316]">
+            <div className="mt-6 flex items-center justify-end text-[11px] font-bold uppercase tracking-[.16em] text-[#0a1f44] transition-all group-hover:text-[#2563eb]">
               Open guidance
               <ArrowRight className="ml-1 h-4 w-4" />
             </div>

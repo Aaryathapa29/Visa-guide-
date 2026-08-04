@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Bell, FileSearch, GraduationCap } from "lucide-react";
+import { Bell, Building2, FileSearch, GraduationCap } from "lucide-react";
 import API from "../../../api";
 import { offNewNotification, onNewNotification } from "../../../socketio-service";
 import ProfileDropdown from "../ui/ProfileDropdown";
@@ -132,22 +132,23 @@ export default function AspirantNavbar({
 
   return (
     <>
-      <header
-        className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b border-white/10 bg-[#0a1f44] px-5 text-white shadow-sm md:px-10 lg:px-16"
-      >
+      <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b border-white/10 bg-[#071735] px-5 text-white shadow-[0_10px_30px_-18px_rgba(2,6,23,0.35)] backdrop-blur md:px-10 lg:px-16">
         <a href="/" className="flex shrink-0 items-center gap-2.5" aria-label="VisaGuide home">
-          <span className="grid h-9 w-9 place-items-center rounded-sm bg-[#f97316] text-white"><GraduationCap className="h-5 w-5" /></span>
+          <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#f97316] text-white shadow-[0_8px_20px_-12px_rgba(249,115,22,0.65)]"><GraduationCap className="h-5 w-5" /></span>
           <span className="aspirant-serif text-xl tracking-tight">Visa<span className="text-[#f97316]">Guide</span></span>
         </a>
 
-        <nav className="hidden items-center gap-1 text-sm md:flex">
-          <NavLink to="/" end className={({ isActive }) => `rounded-sm px-3 py-2 font-medium transition-colors ${isActive ? "text-[#f97316]" : "text-white/75 hover:text-[#f97316]"}`}>
+        <nav className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/10 p-1 text-sm md:flex">
+          <NavLink to="/" end className={({ isActive }) => `rounded-full px-3 py-2 font-medium transition-all duration-200 ${isActive ? "bg-white text-[#0a1f44] shadow-[0_8px_18px_-10px_rgba(10,31,68,0.35)]" : "text-white/75 hover:bg-white/10 hover:text-white"}`}>
             Home
           </NavLink>
-          <NavLink to="/chatbot" className={({ isActive }) => `rounded-sm px-3 py-2 font-medium transition-colors ${isActive ? "text-[#f97316]" : "text-white/75 hover:text-[#f97316]"}`}>
+          <NavLink to="/consultancies" className={({ isActive }) => `flex items-center gap-2 rounded-full px-3 py-2 font-medium transition-all duration-200 ${isActive ? "bg-white text-[#0a1f44] shadow-[0_8px_18px_-10px_rgba(10,31,68,0.35)]" : "text-white/75 hover:bg-white/10 hover:text-white"}`}>
+            <Building2 className="h-4 w-4" />Consultancies
+          </NavLink>
+          <NavLink to="/chatbot" className={({ isActive }) => `rounded-full px-3 py-2 font-medium transition-all duration-200 ${isActive ? "bg-white text-[#0a1f44] shadow-[0_8px_18px_-10px_rgba(10,31,68,0.35)]" : "text-white/75 hover:bg-white/10 hover:text-white"}`}>
             Chatbot
           </NavLink>
-          <NavLink to="/document-analyzer" className={({ isActive }) => `flex items-center gap-2 rounded-sm px-3 py-2 font-medium transition-colors ${isActive ? "text-[#f97316]" : "text-white/75 hover:text-[#f97316]"}`}>
+          <NavLink to="/document-analyzer" className={({ isActive }) => `flex items-center gap-2 rounded-full px-3 py-2 font-medium transition-all duration-200 ${isActive ? "bg-white text-[#0a1f44] shadow-[0_8px_18px_-10px_rgba(10,31,68,0.35)]" : "text-white/75 hover:bg-white/10 hover:text-white"}`}>
             <FileSearch className="h-4 w-4" />Document Analyzer
           </NavLink>
         </nav>

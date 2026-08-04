@@ -1,10 +1,5 @@
-<<<<<<< HEAD
-// frontend/src/api/documentParser.ts
+// frontend/src/api/documentparser.ts
 // Separate from api.ts, this talks to FastAPI (port 8002), not Django (port 8000)
-=======
-// src/api/documentparser.ts
-// Calls FastAPI document parser (port 8002), separate from Django (port 8000)
->>>>>>> 236eb7d7115afd60abcdddca230e43ddb90c7830
 
 const PARSER_URL = import.meta.env.VITE_PARSER_URL ?? "http://localhost:8002";
 // Must set in frontend/.env: VITE_PARSER_URL=http://localhost:8002
@@ -66,21 +61,12 @@ export async function analyzeFile(file: File): Promise<AnalysisResult> {
   const form = new FormData();
   form.append("file", file);
 
-<<<<<<< HEAD
- const res = await fetch(`${PARSER_URL}/api/v1/analyze/file`, {
-  method: "POST",
-  body: form,
-  // Do NOT set Content-Type header manually here,
-  // fetch sets it automatically with the correct boundary for FormData
-});
-=======
   const res = await fetch(`${PARSER_URL}/api/v1/analyze/file`, {
     method: "POST",
     body: form,
     // Do NOT set Content-Type header manually here,
     // fetch sets it automatically with the correct boundary for FormData
   });
->>>>>>> 236eb7d7115afd60abcdddca230e43ddb90c7830
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

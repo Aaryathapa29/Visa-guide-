@@ -14,17 +14,27 @@
 .aspirant-hero {
   background: linear-gradient(135deg, #071735 0%, #0a1f44 60%, #17366a 100%);
 }
-.aspirant-hero::before {
+.aspirant-hero::before,
+.aspirant-hero::after {
   content: "";
   position: absolute;
-  width: 34rem;
-  height: 34rem;
-  right: -11rem;
-  top: -13rem;
+  pointer-events: none;
   border-radius: 9999px;
-  background: #f97316;
-  opacity: .12;
-  filter: blur(72px);
+  filter: blur(70px);
+}
+.aspirant-hero::before {
+  width: 26rem;
+  height: 26rem;
+  right: -8rem;
+  top: -10rem;
+  background: rgba(249, 115, 22, 0.16);
+}
+.aspirant-hero::after {
+  width: 22rem;
+  height: 22rem;
+  left: -8rem;
+  bottom: -10rem;
+  background: rgba(14, 116, 144, 0.12);
 }
 .aspirant-card {
   background: #fff;
@@ -32,6 +42,82 @@
   box-shadow: 0 4px 20px -8px rgb(10 31 68 / .18);
 }
 .aspirant-card:hover { box-shadow: 0 20px 50px -20px rgb(10 31 68 / .35); }
+
+.hero-orb {
+  position: absolute;
+  inset: -8% -10% auto auto;
+  width: 18rem;
+  height: 18rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.24) 0%, rgba(249, 115, 22, 0.08) 55%, transparent 100%);
+  filter: blur(18px);
+  pointer-events: none;
+}
+
+.world-map {
+  animation: floatWorld 7s ease-in-out infinite;
+}
+
+.marker {
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 9999px;
+  border: 2px solid rgba(255,255,255,0.95);
+  background: linear-gradient(135deg, #f97316 0%, #ffb476 100%);
+  box-shadow: 0 0 0 0 rgba(249,115,22,0.34);
+  animation: markerPulse 3.2s ease-out infinite;
+}
+
+.marker::after {
+  content: "";
+  position: absolute;
+  inset: -0.35rem;
+  border: 1px solid rgba(249,115,22,0.25);
+  border-radius: 9999px;
+}
+
+.marker-canada { animation-delay: 0.6s; }
+.marker-australia { animation-delay: 1.1s; }
+.marker-germany { animation-delay: 1.8s; }
+.marker-uk { animation-delay: 2.2s; }
+
+.route-lines {
+  opacity: 0.8;
+  background-image: radial-gradient(circle at 24% 35%, rgba(249,115,22,0.65) 0 2px, transparent 2px),
+    radial-gradient(circle at 70% 60%, rgba(10,31,68,0.3) 0 1.8px, transparent 1.8px),
+    radial-gradient(circle at 46% 32%, rgba(249,115,22,0.35) 0 1.4px, transparent 1.4px);
+  background-size: 16rem 16rem, 12rem 12rem, 10rem 10rem;
+  background-repeat: no-repeat;
+  animation: routeDrift 9s linear infinite;
+}
+
+.floating-card {
+  animation: floatingCard 5.6s ease-in-out infinite;
+}
+
+.feature-pill {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+}
+
+.journey-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.journey-card::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(249,115,22,0) 0%, rgba(249,115,22,0.34) 50%, rgba(249,115,22,0) 100%);
+  transform: scaleX(0.6);
+  transform-origin: center;
+  transition: transform 0.3s ease;
+}
+
+.journey-card:hover::before {
+  transform: scaleX(1);
+}
 
 input:-webkit-autofill,
 textarea:-webkit-autofill {
@@ -43,3 +129,27 @@ input:-webkit-autofill:focus,
 textarea:-webkit-autofill:focus {
   box-shadow: inset 0 0 0px 1000px #eef4ff !important;
 }
+
+@keyframes markerPulse {
+  0% { box-shadow: 0 0 0 0 rgba(249,115,22,0.34); transform: scale(0.95); }
+  50% { box-shadow: 0 0 0 10px rgba(249,115,22,0); transform: scale(1.04); }
+  100% { box-shadow: 0 0 0 0 rgba(249,115,22,0); transform: scale(0.95); }
+}
+
+@keyframes floatWorld {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes floatingCard {
+  0%, 100% { transform: translateY(0px); opacity: 0.9; }
+  50% { transform: translateY(-6px); opacity: 1; }
+}
+
+@keyframes routeDrift {
+  0% { transform: translate3d(-2%, 0, 0); }
+  50% { transform: translate3d(2%, -1%, 0); }
+  100% { transform: translate3d(-2%, 0, 0); }
+}
+
+

@@ -16,6 +16,7 @@ import AspirantLayout from "./components/aspirant/AspirantLayout";
 import VisaChatbot from "./components/chatbot/VisaChatbot";
 import DocumentAnalysisCard from "./components/aspirant/DocumentAnalysisCard";
 import ChatScreen from "./components/chat/ChatScreen";
+import ConsultancyBrowseGrid from "./components/aspirant/ConsultancyBrowseGrid";
 import AccountSettings from "./components/pages/AccountSettings";
 
 function RouteConsultancyProfilePage() {
@@ -85,6 +86,7 @@ export default function App() {
       <Routes>
         <Route element={<AspirantLayout onLogout={handleLogout} />} path="/">
           <Route index element={<VisaAspirantHome />} />
+          <Route path="consultancies" element={<div className="mx-auto max-w-7xl px-6 py-10 lg:px-16"><ConsultancyBrowseGrid /></div>} />
           <Route path="chatbot" element={<VisaChatbot onClose={() => navigate("/")} />} />
           <Route path="chat/:roomId" element={<ChatScreen />} />
           <Route path="document-analyzer" element={<DocumentAnalysisCard onClose={() => navigate("/")} />} />

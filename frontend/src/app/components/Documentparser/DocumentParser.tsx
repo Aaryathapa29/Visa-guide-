@@ -110,23 +110,39 @@ export default function DocumentParser({ onClose }: { onClose: () => void }) {
         : <TextInput onSubmit={handleText} loading={loading} />
       }
 
-      {/* Error display */}
+     
+     
+                     {/* Error display */}
       {error && (
+<<<<<<< HEAD
+        <div
+          className="rounded-xl p-4 text-sm space-y-2"
+=======
         <div className="rounded-xl p-4 text-sm space-y-2"
+>>>>>>> 236eb7d7115afd60abcdddca230e43ddb90c7830
           style={{ background: "#fef2f2", border: "1px solid #fecaca" }}
         >
           {isUnsupportedDoc(error) ? (
             <>
-              <p className="font-bold text-red-700">❌ Unsupported Document Type</p>
+              <p className="font-bold text-red-700">
+                ❌ Unsupported Document Type
+              </p>
+
               <p className="text-red-600">{error}</p>
+
               <div
                 className="rounded-lg px-3 py-2 text-xs mt-2"
-                style={{ background: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0" }}
+                style={{
+                  background: "#f0fdf4",
+                  color: "#16a34a",
+                  border: "1px solid #bbf7d0",
+                }}
               >
                 <p className="font-semibold">✅ Accepted documents:</p>
                 <p>• Visa Cover Letters (tourist, student, work, business visa)</p>
                 <p>• Study-Abroad Statements of Purpose (SOPs)</p>
-                <p className="mt-1 font-semibold">❌ Not accepted:</p>
+
+                <p className="mt-2 font-semibold">❌ Not accepted:</p>
                 <p>• Medical reports, doctor's SOPs, residency applications</p>
                 <p>• Legal documents, court orders, affidavits</p>
                 <p>• Business reports, invoices, financial statements</p>
@@ -136,12 +152,13 @@ export default function DocumentParser({ onClose }: { onClose: () => void }) {
             </>
           ) : (
             <p className="text-red-700 font-medium">
-              ❌ {error} — make sure FastAPI is running on port 8002.
+              ❌ {error} — make sure the parser backend is running on port 8002
+              and LanguageTool/Docker is available if you want full grammar
+              checks.
             </p>
           )}
         </div>
       )}
-
-    </div>
+          </div>
   );
 }

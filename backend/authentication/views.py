@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import date, datetime
 
 import resend
 from django.conf import settings
@@ -7,16 +8,26 @@ from django.db import IntegrityError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
-from .models import ConsultancyCountryProfile, ConsultancyNotification, ConsultancyVisitNotification, LoginHistory, User
+from .models import (
+    Booking,
+    ConsultancyCountryProfile,
+    ConsultancyNotification,
+    ConsultancyVisitNotification,
+    LoginHistory,
+    Notification,
+    User,
+)
 from .serializers import (
     LoginSerializer,
     LoginHistorySerializer,
@@ -35,6 +46,256 @@ except ImportError:
 
 
 UserModel = get_user_model()
+
+
+def format_booking_time(value):
+    if value in (None, ""):
+        return ""
+
+    if isinstance(value, str):
+        value = value.strip()
+        if value.endswith(("AM", "PM")):
+            return value
+
+        for pattern in ("%H:%M", "%H:%M:%S"):
+            try:
+                return datetime.strptime(value, pattern).strftime("%I:%M %p")
+            except ValueError:
+                continue
+
+    return str(value)
+
+
+def serialize_booking(booking):
+    aspirant_name = booking.aspirant.get_full_name() or booking.aspirant.username or booking.aspirant.email or 'Aspirant'
+    consultancy_name = booking.consultancy.office_name or booking.consultancy.get_full_name() or booking.consultancy.username or booking.consultancy.email or 'Consultancy'
+
+    return {
+        'id': booking.id,
+        'aspirant_id': booking.aspirant_id,
+        'aspirant_name': aspirant_name,
+        'consultancy_id': booking.consultancy_id,
+        'consultancy_name': consultancy_name,
+        'appointment_date': booking.appointment_date.isoformat(),
+        'appointment_time': format_booking_time(booking.appointment_time),
+        'booking_date': booking.appointment_date.isoformat(),
+        'booking_time': format_booking_time(booking.appointment_time),
+        'assigned_time': booking.assigned_time,
+        'notes': booking.notes,
+        'status': booking.status,
+        'created_at': booking.created_at.isoformat(),
+        'updated_at': booking.updated_at.isoformat(),
+    }
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def bookings(request):
+    user = request.user
+
+    if request.method == 'GET':
+        queryset = Booking.objects.select_related('aspirant', 'consultancy')
+        if getattr(user, 'role', None) == 'consultancy':
+            queryset = queryset.filter(consultancy=user)
+        else:
+            queryset = queryset.filter(aspirant=user)
+
+        consultancy_id = request.query_params.get('consultancy_id')
+        if consultancy_id:
+            queryset = queryset.filter(consultancy_id=int(consultancy_id))
+
+        status_value = request.query_params.get('status')
+        if status_value:
+            queryset = queryset.filter(status=status_value)
+
+        return Response([serialize_booking(item) for item in queryset.order_by('-created_at')], status=200)
+
+    if getattr(user, 'role', None) != 'student':
+        return Response({'detail': 'Only aspirants can create counselling bookings.'}, status=403)
+
+    consultancy_id = request.data.get('consultancy_id')
+    appointment_date = request.data.get('appointment_date')
+    appointment_time = request.data.get('appointment_time')
+    notes = (request.data.get('notes') or '').strip()
+
+    if not consultancy_id or not appointment_date or not appointment_time:
+        return Response({'detail': 'consultancy_id, appointment_date, and appointment_time are required.'}, status=400)
+
+    try:
+        consultancy = UserModel.objects.get(pk=int(consultancy_id), role='consultancy')
+    except (UserModel.DoesNotExist, ValueError, TypeError):
+        return Response({'detail': 'Consultancy not found.'}, status=404)
+
+    if int(consultancy_id) == user.id:
+        return Response({'detail': 'You cannot book a counselling session with yourself.'}, status=400)
+
+    try:
+        parsed_date = date.fromisoformat(str(appointment_date))
+    except ValueError:
+        return Response({'detail': 'appointment_date must be a valid ISO date such as YYYY-MM-DD.'}, status=400)
+
+    booking = Booking.objects.create(
+        aspirant=user,
+        consultancy=consultancy,
+        appointment_date=parsed_date,
+        appointment_time=str(appointment_time).strip(),
+        notes=notes,
+        status='pending',
+    )
+
+    notification_payload = {
+        'id': booking.id,
+        'card_id': booking.id,
+        'booking_id': booking.id,
+        'aspirant_name': user.get_full_name() or user.username or user.email or 'Aspirant',
+        'message': f"{user.get_full_name() or user.username or user.email or 'An aspirant'} requested a counselling session for {booking.appointment_date.isoformat()} at {booking.appointment_time}.",
+        'timestamp': booking.created_at.isoformat(),
+        'is_read': False,
+    }
+
+    try:
+        from socketio_client import emit_notification_to_consultancy
+        emit_notification_to_consultancy(consultancy.id, notification_payload)
+    except Exception:
+        pass
+
+    return Response(serialize_booking(booking), status=201)
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def booking_detail(request, booking_id):
+    user = request.user
+    booking = get_object_or_404(Booking.objects.select_related('aspirant', 'consultancy'), pk=booking_id)
+
+    if user.id not in [booking.aspirant_id, booking.consultancy_id]:
+        return Response({'detail': 'You do not have access to this booking.'}, status=403)
+
+    if request.method == 'GET':
+        return Response(serialize_booking(booking), status=200)
+
+    if getattr(user, 'role', None) != 'consultancy' or booking.consultancy_id != user.id:
+        return Response({'detail': 'Only the assigned consultancy can update this booking.'}, status=403)
+
+    previous_status = booking.status
+    new_status = request.data.get('status')
+    if new_status in {'pending', 'confirmed', 'cancelled', 'rejected'}:
+        booking.status = new_status
+
+    assigned_time = request.data.get('assigned_time')
+    if assigned_time is not None:
+        booking.assigned_time = str(assigned_time).strip()
+
+    if new_status == 'confirmed' and not booking.assigned_time:
+        booking.assigned_time = booking.appointment_time
+
+    booking.save()
+    create_booking_status_notification(booking, previous_status)
+    return Response(serialize_booking(booking), status=200)
+
+
+def emit_user_notification(user, title, message):
+    if not user:
+        return None
+
+    notification = Notification.objects.create(
+        user=user,
+        title=title,
+        message=message,
+        is_read=False,
+    )
+
+    try:
+        from socketio_client import emit_notification_to_user
+        emit_notification_to_user(user.id, {
+            'id': notification.id,
+            'title': notification.title,
+            'message': notification.message,
+            'created_at': notification.created_at.isoformat(),
+            'is_read': notification.is_read,
+        })
+    except Exception:
+        pass
+
+    return notification
+
+
+def create_booking_status_notification(booking, previous_status=None):
+    if not booking or not booking.aspirant_id:
+        return None
+
+    status = booking.status
+    status_labels = {
+        'pending': 'Booking pending',
+        'confirmed': 'Booking confirmed',
+        'cancelled': 'Booking cancelled',
+        'rejected': 'Booking rejected',
+    }
+
+    if status not in status_labels:
+        return None
+
+    if previous_status is not None and previous_status == status:
+        return None
+
+    consultancy_name = booking.consultancy.office_name or booking.consultancy.get_full_name() or booking.consultancy.username or 'Consultancy'
+    status_title = status_labels[status]
+    message = (
+        f"Your booking with {consultancy_name} was {status} "
+        f"for {booking.appointment_date.isoformat()} at {booking.appointment_time}."
+    )
+
+    return emit_user_notification(booking.aspirant, status_title, message)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_booking_detail(request, booking_id):
+    user = request.user
+    booking = get_object_or_404(Booking.objects.select_related('aspirant', 'consultancy'), pk=booking_id)
+
+    if getattr(user, 'role', None) != 'consultancy' or booking.consultancy_id != user.id:
+        return Response({'detail': 'Only the assigned consultancy can update this booking.'}, status=403)
+
+    previous_status = booking.status
+    previous_date = booking.appointment_date
+    previous_time = booking.appointment_time
+    raw_date = request.data.get('appointment_date', request.data.get('booking_date'))
+    raw_time = request.data.get('appointment_time', request.data.get('booking_time'))
+    status_value = request.data.get('status')
+
+    if raw_date is not None:
+        try:
+            booking.appointment_date = date.fromisoformat(str(raw_date))
+        except ValueError:
+            return Response({'detail': 'appointment_date must be a valid ISO date such as YYYY-MM-DD.'}, status=400)
+
+    if raw_time is not None:
+        booking.appointment_time = str(raw_time).strip()
+
+    if status_value in {'pending', 'confirmed', 'cancelled', 'rejected'}:
+        booking.status = status_value
+
+    assigned_time = request.data.get('assigned_time')
+    if assigned_time is not None:
+        booking.assigned_time = str(assigned_time).strip()
+
+    if booking.status == 'confirmed' and not booking.assigned_time:
+        booking.assigned_time = booking.appointment_time
+
+    booking.save()
+
+    if booking.status != previous_status:
+        create_booking_status_notification(booking, previous_status)
+    elif (booking.appointment_date != previous_date or booking.appointment_time != previous_time):
+        consultancy_name = booking.consultancy.office_name or booking.consultancy.get_full_name() or booking.consultancy.username or 'Consultancy'
+        emit_user_notification(
+            booking.aspirant,
+            'Booking Updated',
+            f"Your booking with {consultancy_name} was updated to {booking.appointment_date.isoformat()} at {booking.appointment_time}.",
+        )
+
+    return Response(serialize_booking(booking), status=200)
 
 
 def get_authenticated_user(request):
@@ -400,17 +661,20 @@ def log_consultancy_visit(request):
         print(f"ERROR: Failed to create ConsultancyVisitNotification: {e}")
         return JsonResponse({'detail': 'Failed to log visit.'}, status=500)
 
+    visitor_name = notification.visitor.username if notification.visitor else 'Anonymous user'
+    notification_message = f'{visitor_name} visited your profile page.'
+    payload_data = {
+        'id': notification.id,
+        'visitor_name': visitor_name,
+        'message': notification_message,
+        'timestamp': notification.timestamp.isoformat(),
+        'is_read': notification.is_read,
+    }
+
     # Emit real-time notification via Socket.IO
     if socketio_available:
         try:
-            notification_data = {
-                'id': notification.id,
-                'visitor_name': 'Anonymous visitor',
-                'message': 'A user visited your profile page.',
-                'timestamp': notification.timestamp.isoformat(),
-                'is_read': notification.is_read,
-            }
-            emit_notification_to_consultancy(consultancy_id, notification_data)
+            emit_notification_to_consultancy(consultancy_id, payload_data)
         except Exception as e:
             print(f'Warning: Failed to emit Socket.IO notification: {e}')
 
@@ -421,6 +685,8 @@ def log_consultancy_visit(request):
                 'id': notification.id,
                 'consultancy_id': notification.consultancy_id,
                 'visitor_id': notification.visitor_id,
+                'visitor_name': visitor_name,
+                'message': notification_message,
                 'timestamp': notification.timestamp.isoformat(),
                 'is_read': notification.is_read,
             },
@@ -447,8 +713,8 @@ def get_consultancy_notifications(request):
     payload = [
         {
             'id': notification.id,
-            'visitor_name': 'Anonymous visitor',
-            'message': 'A user visited your profile page.',
+            'visitor_name': notification.visitor.username if notification.visitor else 'Anonymous user',
+            'message': f"{notification.visitor.username if notification.visitor else 'Anonymous user'} visited your profile page.",
             'timestamp': notification.timestamp.isoformat(),
             'is_read': notification.is_read,
         }
@@ -458,27 +724,40 @@ def get_consultancy_notifications(request):
     return JsonResponse({'notifications': payload, 'unread_count': unread_count}, status=200)
     
 class ConsultancyNotificationsView(APIView):
-    """Notifications endpoint for consultancies.
-
-    Uses JWT authentication and DRF permissions so CSRF is not required.
-    """
+    """Notifications endpoint for both consultancies and aspirants."""
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request, *args, **kwargs):
         user = request.user
-        if not user or getattr(user, 'role', None) != 'consultancy':
-            return Response({'detail': 'Only consultancy accounts can access notifications.'}, status=403)
+        if not user:
+            return Response({'detail': 'Authentication required.'}, status=401)
 
-        notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
-        unread_count = ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).count()
+        if getattr(user, 'role', None) == 'consultancy':
+            notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
+            unread_count = ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).count()
+
+            payload = [
+                {
+                    'id': notification.id,
+                    'visitor_name': notification.visitor.username if notification.visitor else 'Anonymous user',
+                    'message': f"{notification.visitor.username if notification.visitor else 'Anonymous user'} visited your profile page.",
+                    'timestamp': notification.timestamp.isoformat(),
+                    'is_read': notification.is_read,
+                }
+                for notification in notifications
+            ]
+            return Response({'notifications': payload, 'unread_count': unread_count}, status=200)
+
+        notifications = Notification.objects.filter(user=user).order_by('-created_at')
+        unread_count = Notification.objects.filter(user=user, is_read=False).count()
 
         payload = [
             {
                 'id': notification.id,
-                'visitor_name': 'Anonymous visitor',
-                'message': 'A user visited your profile page.',
-                'timestamp': notification.timestamp.isoformat(),
+                'title': notification.title,
+                'message': notification.message,
+                'created_at': notification.created_at.isoformat(),
                 'is_read': notification.is_read,
             }
             for notification in notifications
@@ -488,25 +767,38 @@ class ConsultancyNotificationsView(APIView):
 
     def post(self, request, *args, **kwargs):
         user = request.user
-        if not user or getattr(user, 'role', None) != 'consultancy':
-            return Response({'detail': 'Only consultancy accounts can access notifications.'}, status=403)
+        if not user:
+            return Response({'detail': 'Authentication required.'}, status=401)
 
-        ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).update(is_read=True)
+        if getattr(user, 'role', None) == 'consultancy':
+            ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).update(is_read=True)
+            notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
+            unread_count = ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).count()
+            payload = [
+                {
+                    'id': notification.id,
+                    'visitor_name': notification.visitor.username if notification.visitor else 'Anonymous user',
+                    'message': f"{notification.visitor.username if notification.visitor else 'Anonymous user'} visited your profile page.",
+                    'timestamp': notification.timestamp.isoformat(),
+                    'is_read': notification.is_read,
+                }
+                for notification in notifications
+            ]
+            return Response({'notifications': payload, 'unread_count': unread_count}, status=200)
 
-        # Return the updated list
-        notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
-        unread_count = ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).count()
+        Notification.objects.filter(user=user, is_read=False).update(is_read=True)
+        notifications = Notification.objects.filter(user=user).order_by('-created_at')
+        unread_count = Notification.objects.filter(user=user, is_read=False).count()
         payload = [
             {
                 'id': notification.id,
-                'visitor_name': 'Anonymous visitor',
-                'message': 'A user visited your profile page.',
-                'timestamp': notification.timestamp.isoformat(),
+                'title': notification.title,
+                'message': notification.message,
+                'created_at': notification.created_at.isoformat(),
                 'is_read': notification.is_read,
             }
             for notification in notifications
         ]
-
         return Response({'notifications': payload, 'unread_count': unread_count}, status=200)
 
 
@@ -516,25 +808,38 @@ class MarkNotificationsReadView(APIView):
 
     def post(self, request, *args, **kwargs):
         user = request.user
-        if not user or getattr(user, 'role', None) != 'consultancy':
-            return Response({'detail': 'Only consultancy accounts can access notifications.'}, status=403)
+        if not user:
+            return Response({'detail': 'Authentication required.'}, status=401)
 
-        ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).update(is_read=True)
+        if getattr(user, 'role', None) == 'consultancy':
+            ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).update(is_read=True)
+            notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
+            unread_count = ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).count()
+            payload = [
+                {
+                    'id': notification.id,
+                    'visitor_name': notification.visitor.username if notification.visitor else 'Anonymous user',
+                    'message': f"{notification.visitor.username if notification.visitor else 'Anonymous user'} visited your profile page.",
+                    'timestamp': notification.timestamp.isoformat(),
+                    'is_read': notification.is_read,
+                }
+                for notification in notifications
+            ]
+            return Response({'notifications': payload, 'unread_count': unread_count}, status=200)
 
-        notifications = ConsultancyVisitNotification.objects.filter(consultancy=user).order_by('-timestamp')
-        unread_count = ConsultancyVisitNotification.objects.filter(consultancy=user, is_read=False).count()
-
+        Notification.objects.filter(user=user, is_read=False).update(is_read=True)
+        notifications = Notification.objects.filter(user=user).order_by('-created_at')
+        unread_count = Notification.objects.filter(user=user, is_read=False).count()
         payload = [
             {
                 'id': notification.id,
-                'visitor_name': 'Anonymous visitor',
-                'message': 'A user visited your profile page.',
-                'timestamp': notification.timestamp.isoformat(),
+                'title': notification.title,
+                'message': notification.message,
+                'created_at': notification.created_at.isoformat(),
                 'is_read': notification.is_read,
             }
             for notification in notifications
         ]
-
         return Response({'notifications': payload, 'unread_count': unread_count}, status=200)
 
 

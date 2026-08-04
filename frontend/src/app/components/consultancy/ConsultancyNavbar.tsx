@@ -307,9 +307,9 @@ export default function ConsultancyNavbar({
           <div className="relative flex items-center gap-1">
             <button onClick={toggleNotifications} className="relative grid h-10 w-10 place-items-center rounded-full text-white/80 transition-colors hover:bg-white/5 hover:text-[#f97316]" aria-label="Visit notifications">
               <Bell className="h-5 w-5" />
-              {(unreadCount > 0 || notifications.length > 0) && (
+              {unreadCount > 0 && (
                 <span className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-[#f97316] px-1 text-[10px] font-bold text-white">
-                  {unreadCount > 0 ? unreadCount : '•'}
+                  {unreadCount}
                 </span>
               )}
             </button>

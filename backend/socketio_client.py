@@ -48,12 +48,10 @@ def emit_notification_to_consultancy(consultancy_id, notification_data):
     Emit notification to a specific consultancy.
     Safe to call anywhere; won't crash your server if the socket app is offline.
     """
-    # 1. Safely evaluate connection status at execution time
     if not ensure_connected():
         print(f'[Socket.IO Fallback] Notification dropped for consultancy {consultancy_id} (Server down).')
         return
 
-    # 2. Emit the event payload
     try:
         sio_client.emit('send_notification', {
             'consultancy_id': consultancy_id,
@@ -62,6 +60,22 @@ def emit_notification_to_consultancy(consultancy_id, notification_data):
         print(f'[Socket.IO] Notification emitted for consultancy {consultancy_id}')
     except Exception as e:
         print(f'[Socket.IO Error] Failed to emit event: {e}')
+
+
+def emit_notification_to_user(user_id, notification_data):
+    """Emit a user-specific notification to the Socket.IO room for the target aspirant."""
+    if not ensure_connected():
+        print(f'[Socket.IO Fallback] Notification dropped for user {user_id} (Server down).')
+        return
+
+    try:
+        sio_client.emit('send_notification_to_user', {
+            'user_id': user_id,
+            'notification': notification_data,
+        })
+        print(f'[Socket.IO] Notification emitted for user {user_id}')
+    except Exception as e:
+        print(f'[Socket.IO Error] Failed to emit user notification event: {e}')
 
 # --- REMOVED THE AUTO-CONNECT ON MODULE IMPORT ---
 # Connection is now entirely driven lazily by the ensure_connected() check above.

@@ -16,6 +16,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -53,6 +54,7 @@ INSTALLED_APPS = [
     # Local apps
     'authentication',
     'chatbot',
+    'chat',
 ]
 
 MIDDLEWARE = [
@@ -84,6 +86,13 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'visa_backend.wsgi.application'
+ASGI_APPLICATION = 'visa_backend.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    }
+}
 
 
 # Database
@@ -169,5 +178,7 @@ REST_FRAMEWORK = {
 
 # Configure Simple JWT to include custom claims (like role)
 SIMPLE_JWT = {
-    'TOKEN_OBTAIN_SERIALIZER': 'authentication.serializers.CustomTokenObtainPairSerializer',
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # Extended for development
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }

@@ -29,7 +29,7 @@ export const consultancies = [
       "New Zealand",
     ],
 
-    universities: [
+    universities: [0
       "University of Melbourne",
       "Technical University of Munich",
     ],

@@ -97,3 +97,9 @@ backend/document_parser_v2/venv/
 backend/document_parser_v2/.venv/
 venv/
 .venv/
+
+# Additional local service artifacts (explicit)
+backend/db.sqlite3
+backend/ModelInference/chroma_db/chroma.sqlite3
+frontend/.env.local
+backend/document_parser_v2/.env

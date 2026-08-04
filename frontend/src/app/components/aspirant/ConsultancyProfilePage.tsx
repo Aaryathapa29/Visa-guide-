@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Globe2, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import API from "../../../api";
+import { ensureChatRoom } from "../../../api/chatApi";
+import BookingModal from "./BookingModal";
 import LoadingState from "../ui/LoadingState";
 
 type Consultancy = {
@@ -30,6 +32,45 @@ export default function ConsultancyProfilePage({ consultancyId }: { consultancyI
   const [countryProfiles, setCountryProfiles] = useState<CountryProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [messagingLoading, setMessagingLoading] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
+
+  const handleMessageConsultancy = async () => {
+    setMessagingLoading(true);
+    try {
+      const currentUser = (() => {
+        try {
+          const raw = localStorage.getItem("authUser");
+          return raw ? JSON.parse(raw) : null;
+        } catch {
+          return null;
+        }
+      })();
+
+      if (!currentUser || !currentUser.id) {
+        alert("Please log in first.");
+        return;
+      }
+
+      const room = await ensureChatRoom(currentUser.id, consultancyId);
+      navigate(`/chat/${room.id}`);
+    } catch {
+      try {
+        // Try to surface a more specific error if available
+      } catch (e) {
+        // ignore
+      }
+      const lastToken = localStorage.getItem('accessToken') || localStorage.getItem('access_token');
+      if (!lastToken) {
+        alert('Session expired or not authenticated. Please sign in to start a chat.');
+        return;
+      }
+      alert('Failed to start chat. Please try again.');
+    } finally {
+      setMessagingLoading(false);
+    }
+  };
+
 
   useEffect(() => {
     let mounted = true;
@@ -119,8 +160,27 @@ export default function ConsultancyProfilePage({ consultancyId }: { consultancyI
                     {consultancy?.office_name || consultancy?.username || "Consultancy"}
                   </h2>
                 </div>
-                <div className="rounded-full bg-[#f8fbff] px-3 py-1 text-sm font-semibold text-[#0a1f44]">
-                  {countryProfiles.length} published
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="rounded-full bg-[#f8fbff] px-3 py-1 text-sm font-semibold text-[#0a1f44]">
+                    {countryProfiles.length} published
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setBookingOpen(true)}
+                    className="rounded-full px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+                    style={{ background: "#0a1f44" }}
+                  >
+                    Book counselling
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleMessageConsultancy}
+                    disabled={messagingLoading}
+                    className="rounded-full px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+                    style={{ background: "#f97316" }}
+                  >
+                    {messagingLoading ? "Starting chat…" : "Message consultancy"}
+                  </button>
                 </div>
               </div>
 
@@ -163,6 +223,15 @@ export default function ConsultancyProfilePage({ consultancyId }: { consultancyI
           </>
         )}
       </main>
+
+      {bookingOpen && consultancy && (
+        <BookingModal
+          consultancyId={consultancy.id}
+          consultancyName={consultancy.office_name || consultancy.username}
+          onClose={() => setBookingOpen(false)}
+          onBooked={() => setBookingOpen(false)}
+        />
+      )}
     </div>
   );
 }

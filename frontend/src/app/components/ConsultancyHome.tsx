@@ -5,6 +5,7 @@ import OnboardingWizard from "./consultancy/OnboardingWizard";
 import ConsultancyChatPanel from "./consultancy/ConsultancyChatPanel";
 import AspirantQueueTable from "./consultancy/AspirantQueueTable";
 import AccountSettings from "./pages/AccountSettings";
+import ChatContainer from "./chat/ChatContainer";
 
 type Page = "dashboard" | "settings";
 
@@ -105,7 +106,7 @@ export default function ConsultancyHome() {
 
         {activeTab === "chats" && (
           <section className="mt-8 border border-slate-200 bg-white p-6 shadow-[0_4px_20px_-8px_rgba(10,31,68,.18)]"><h2 className="aspirant-serif text-2xl text-[#0a1f44]">Aspirant Chats</h2><p className="mt-1 text-sm text-slate-600">Respond to messages from visa aspirants who are interested in your services.</p><div className="mt-6">
-            <ConsultancyChatPanel />
+            <ChatContainer />
           </div></section>
         )}
 

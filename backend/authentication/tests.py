@@ -1,7 +1,7 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from .models import User
+from .models import Notification, User
 
 
 class HomePageTests(TestCase):
@@ -66,3 +66,116 @@ class AccountSettingsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.user.refresh_from_db()
         self.assertFalse(self.user.is_active)
+
+
+class BookingApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.aspirant = User.objects.create_user(
+            username='aspirant-booker',
+            email='aspirant-booker@example.com',
+            password='StrongPass123',
+            role='student',
+            first_name='Aspirant Booker',
+        )
+        self.consultancy = User.objects.create_user(
+            username='bright-visa',
+            email='bright-visa@example.com',
+            password='StrongPass123',
+            role='consultancy',
+            office_name='Bright Visa',
+            is_verified=True,
+        )
+
+    def test_create_booking_for_consultancy(self):
+        self.client.force_authenticate(self.aspirant)
+
+        response = self.client.post(
+            '/api/auth/bookings/',
+            {
+                'consultancy_id': self.consultancy.id,
+                'appointment_date': '2026-08-20',
+                'appointment_time': '10:00 AM',
+                'notes': 'Need guidance on student visa process.',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()['status'], 'pending')
+        self.assertEqual(response.json()['aspirant_id'], self.aspirant.id)
+        self.assertEqual(response.json()['consultancy_id'], self.consultancy.id)
+
+    def test_consultancy_can_confirm_booking(self):
+        self.client.force_authenticate(self.aspirant)
+        create_response = self.client.post(
+            '/api/auth/bookings/',
+            {
+                'consultancy_id': self.consultancy.id,
+                'appointment_date': '2026-08-20',
+                'appointment_time': '10:00 AM',
+            },
+            format='json',
+        )
+        booking_id = create_response.json()['id']
+
+        self.client.force_authenticate(self.consultancy)
+        response = self.client.patch(
+            f'/api/auth/bookings/{booking_id}/',
+            {'status': 'confirmed', 'assigned_time': '11:00 AM'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'confirmed')
+        self.assertEqual(response.json()['assigned_time'], '11:00 AM')
+
+    def test_booking_update_returns_booking_date_and_time(self):
+        self.client.force_authenticate(self.aspirant)
+        create_response = self.client.post(
+            '/api/auth/bookings/',
+            {
+                'consultancy_id': self.consultancy.id,
+                'appointment_date': '2026-08-20',
+                'appointment_time': '10:00 AM',
+            },
+            format='json',
+        )
+        booking_id = create_response.json()['id']
+
+        self.client.force_authenticate(self.consultancy)
+        response = self.client.patch(
+            f'/api/auth/bookings/{booking_id}/update/',
+            {'appointment_date': '2026-08-21', 'appointment_time': '02:30 PM'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['booking_date'], '2026-08-21')
+        self.assertEqual(response.json()['booking_time'], '02:30 PM')
+
+    def test_confirmed_booking_creates_aspirant_notification(self):
+        self.client.force_authenticate(self.aspirant)
+        create_response = self.client.post(
+            '/api/auth/bookings/',
+            {
+                'consultancy_id': self.consultancy.id,
+                'appointment_date': '2026-08-20',
+                'appointment_time': '10:00 AM',
+            },
+            format='json',
+        )
+        booking_id = create_response.json()['id']
+
+        self.client.force_authenticate(self.consultancy)
+        response = self.client.patch(
+            f'/api/auth/bookings/{booking_id}/',
+            {'status': 'confirmed', 'assigned_time': '11:00 AM'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(Notification.objects.filter(user=self.aspirant, is_read=False).exists())
+        notification = Notification.objects.filter(user=self.aspirant).latest('created_at')
+        self.assertIn('confirmed', notification.title.lower())
+        self.assertIn('booking', notification.message.lower())

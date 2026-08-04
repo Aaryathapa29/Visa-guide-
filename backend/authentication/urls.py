@@ -14,6 +14,9 @@ from .views import (
     log_consultancy_visit,
     ConsultancyNotificationsView,
     MarkNotificationsReadView,
+    bookings,
+    booking_detail,
+    update_booking_detail,
 )
 
 urlpatterns = [
@@ -41,4 +44,7 @@ urlpatterns = [
     path('log-visit/', log_consultancy_visit, name='log_visit'),
     path('notifications/', ConsultancyNotificationsView.as_view(), name='notifications'),
     path('notifications/mark-read/', MarkNotificationsReadView.as_view(), name='mark_notifications_read'),
+    path('bookings/', bookings, name='bookings'),
+    path('bookings/<int:booking_id>/', booking_detail, name='booking_detail'),
+    path('bookings/<int:booking_id>/update/', update_booking_detail, name='booking_update_detail'),
 ]

@@ -5,6 +5,7 @@ import type { BrowseView } from "./ui/theme";
 import CountryBrowseGrid, { BrowseToggle } from "./aspirant/CountryBrowseGrid";
 import ConsultancyBrowseGrid from "./aspirant/ConsultancyBrowseGrid";
 import BookingModal from "./aspirant/BookingModal";
+import ChatContainer from "./chat/ChatContainer";
 
 type Modal = "booking" | null;
 

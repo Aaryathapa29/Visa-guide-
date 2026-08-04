@@ -12,10 +12,29 @@ const notificationsReadWrappers = new Map<Function, (...args: any[]) => void>();
 let authSucceeded = false;
 let latestSnapshot: any = null;
 
+function getStoredToken() {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  return (
+    window.localStorage.getItem('access_token') ||
+    window.localStorage.getItem('accessToken') ||
+    window.localStorage.getItem('token') ||
+    window.sessionStorage.getItem('access_token') ||
+    window.sessionStorage.getItem('accessToken') ||
+    window.sessionStorage.getItem('token') ||
+    ''
+  );
+}
+
 const createSocket = (): Socket => {
   if (socket) {
     return socket;
   }
+
+  const token = getStoredToken();
+  const socketQuery = token ? { token } : undefined;
 
   socket = io(SOCKETIO_SERVER_URL, {
     transports: ['polling', 'websocket'],
@@ -24,6 +43,7 @@ const createSocket = (): Socket => {
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     reconnectionAttempts: 5,
+    query: socketQuery,
   });
 
   socket.on('connect', () => {
@@ -71,6 +91,8 @@ const createSocket = (): Socket => {
 
   return socket;
 };
+
+export const getGlobalSocket = (): Socket => createSocket();
 
 const getSocketIfInitialized = (): Socket | null => socket;
 

@@ -26,6 +26,12 @@ from authentication.views import (
     ConsultancyNotificationsView,
     MarkNotificationsReadView,
 )
+from chat.views import ChatRoomViewSet, room_messages
+from chat.views import get_or_create_room_for_current_user
+from rest_framework.routers import DefaultRouter
+
+router = DefaultRouter()
+router.register(r'rooms', ChatRoomViewSet, basename='chat-room')
 
 def home(request):
     return JsonResponse({
@@ -75,4 +81,7 @@ urlpatterns = [
     path('api/log-visit/', log_consultancy_visit, name='log_consultancy_visit'),
     path('api/notifications/', ConsultancyNotificationsView.as_view(), name='get_consultancy_notifications'),
     path('api/notifications/mark-read/', MarkNotificationsReadView.as_view(), name='mark_notifications_read'),
+    path('api/chat/', include(router.urls)),
+    path('api/chat/rooms/ensure-current/', get_or_create_room_for_current_user, name='ensure_chat_room_current'),
+    path('api/chat/rooms/<int:room_id>/messages/', room_messages, name='room_messages'),
 ]

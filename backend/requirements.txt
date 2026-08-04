@@ -7,6 +7,7 @@ django-jazzmin
 resend
 djangorestframework
 djangorestframework-simplejwt
+channels
 python-socketio
 aiohttp
 aiohttp-cors

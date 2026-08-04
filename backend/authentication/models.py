@@ -31,6 +31,24 @@ class User(AbstractUser):
     office_name = models.CharField(max_length=255, blank=True, null=True)
 
 
+class Notification(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notifications',
+    )
+    title = models.CharField(max_length=200, default='Notification')
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user.username}: {self.title}'
+
+
 class ConsultancyNotification(models.Model):
     consultancy = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -47,6 +65,39 @@ class ConsultancyNotification(models.Model):
 
     def __str__(self):
         return f'{self.aspirant_name} -> {self.consultancy.username}'
+
+
+class Booking(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('confirmed', 'Confirmed'),
+        ('cancelled', 'Cancelled'),
+        ('rejected', 'Rejected'),
+    )
+
+    aspirant = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='bookings_as_aspirant',
+    )
+    consultancy = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='bookings_as_consultancy',
+    )
+    appointment_date = models.DateField()
+    appointment_time = models.CharField(max_length=30)
+    assigned_time = models.CharField(max_length=30, blank=True, default='')
+    notes = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.aspirant.username} -> {self.consultancy.username} ({self.status})'
 
 
 class ConsultancyVisitNotification(models.Model):

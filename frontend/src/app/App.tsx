@@ -15,6 +15,7 @@ import CountryProfileDetailPage from "./components/aspirant/CountryProfileDetail
 import AspirantLayout from "./components/aspirant/AspirantLayout";
 import VisaChatbot from "./components/chatbot/VisaChatbot";
 import DocumentAnalysisCard from "./components/aspirant/DocumentAnalysisCard";
+import ChatScreen from "./components/chat/ChatScreen";
 import AccountSettings from "./components/pages/AccountSettings";
 
 function RouteConsultancyProfilePage() {
@@ -75,6 +76,7 @@ export default function App() {
     isAspirantAuthenticated &&
     (location.pathname === "/" ||
       location.pathname.startsWith("/chatbot") ||
+      location.pathname.startsWith("/chat") ||
       location.pathname.startsWith("/document-analyzer") ||
       location.pathname.startsWith("/settings") ||
       location.pathname.startsWith("/consultancies"))
@@ -84,6 +86,7 @@ export default function App() {
         <Route element={<AspirantLayout onLogout={handleLogout} />} path="/">
           <Route index element={<VisaAspirantHome />} />
           <Route path="chatbot" element={<VisaChatbot onClose={() => navigate("/")} />} />
+          <Route path="chat/:roomId" element={<ChatScreen />} />
           <Route path="document-analyzer" element={<DocumentAnalysisCard onClose={() => navigate("/")} />} />
           <Route path="settings" element={<AccountSettings userRole="aspirant" userName={(() => { try { const raw = localStorage.getItem("authUser"); if (!raw) return ""; const u = JSON.parse(raw); return (u.display_name || u.full_name || u.fullName || u.first_name || u.username || u.email || "").toString().trim(); } catch { return ""; } })()} onBack={() => navigate("/")} onAccountDeleted={handleLogout} />} />
           <Route path="consultancies/:consultancyId" element={<RouteConsultancyProfilePage />} />

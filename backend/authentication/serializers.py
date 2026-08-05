@@ -59,7 +59,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 
-from .models import LoginHistory, User
+from .models import Expert, LoginHistory, User
 
 UserModel = get_user_model()
 
@@ -182,6 +182,13 @@ class UserSerializer(serializers.ModelSerializer):
             obj.email or
             ''
         )
+
+
+class ExpertSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Expert
+        fields = ('id', 'consultancy_id', 'name', 'specialization', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'consultancy_id', 'created_at', 'updated_at')
 
 
 class LoginHistorySerializer(serializers.ModelSerializer):

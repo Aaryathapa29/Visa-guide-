@@ -67,10 +67,32 @@ class ConsultancyNotification(models.Model):
         return f'{self.aspirant_name} -> {self.consultancy.username}'
 
 
+class Expert(models.Model):
+    consultancy = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='experts',
+    )
+    name = models.CharField(max_length=150)
+    specialization = models.CharField(max_length=150, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+        constraints = [
+            models.UniqueConstraint(fields=['consultancy', 'name'], name='unique_consultancy_expert_name'),
+        ]
+
+    def __str__(self):
+        return f'{self.name} ({self.specialization})'
+
+
 class Booking(models.Model):
     STATUS_CHOICES = (
         ('pending', 'Pending'),
         ('confirmed', 'Confirmed'),
+        ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
         ('rejected', 'Rejected'),
     )
@@ -84,6 +106,13 @@ class Booking(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name='bookings_as_consultancy',
+    )
+    expert = models.ForeignKey(
+        Expert,
+        on_delete=models.SET_NULL,
+        related_name='bookings',
+        null=True,
+        blank=True,
     )
     appointment_date = models.DateField()
     appointment_time = models.CharField(max_length=30)

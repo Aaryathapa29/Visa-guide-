@@ -79,7 +79,7 @@ COUNTRY_KEYWORDS = {
 # ── Load embedding model once at module level ─────────────────────────────────
 print("[rag] Loading embedding model (sentence-transformers)...")
 embedder = SentenceTransformer(EMBEDDING_MODEL)
-print("[rag] Embedding model ready ✓")
+print("[rag] Embedding model ready [OK]")
 
 
 # ── ChromaDB setup ────────────────────────────────────────────────────────────

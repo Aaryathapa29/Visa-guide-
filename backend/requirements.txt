@@ -1,3 +1,4 @@
+# Core Django backend
 Django
 django-cors-headers
 dj-database-url
@@ -9,15 +10,28 @@ djangorestframework
 djangorestframework-simplejwt
 channels
 python-socketio
+python-engineio
 aiohttp
 aiohttp-cors
+asgiref
 
-# Chatbot (RAG) dependencies, merged from ModelInference.
-# Heavy libs (torch comes in via sentence-transformers) load lazily on first
-# chat request, so they do not slow Django startup.
+# Chat / RAG / vector search
+# sentence-transformers pulls torch at runtime, so it is kept here for the
+# chatbot and inference flows used by the backend.
 groq
 chromadb
 sentence-transformers
 pypdf
 numpy
 
+# FastAPI document processing services
+fastapi
+uvicorn[standard]
+google-generativeai
+pdfplumber
+protobuf==4.25.8
+spacy
+sqlalchemy
+httpx
+python-multipart
+python-docx

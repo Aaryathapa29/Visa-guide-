@@ -53,8 +53,9 @@ apiClient.interceptors.response.use(
         window.sessionStorage.removeItem('accessToken');
         window.sessionStorage.removeItem('access_token');
         window.sessionStorage.removeItem('token');
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
+        const targetPath = window.location.pathname === '/login' ? '/?preview=consultancy' : '/';
+        if (window.location.pathname !== targetPath) {
+          window.location.href = targetPath;
         }
       }
     }

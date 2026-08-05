@@ -20,7 +20,7 @@ export function ModalOverlay({
     >
       <div
         className="w-full rounded-2xl overflow-hidden flex flex-col shadow-2xl"
-        style={{ maxWidth: wide ? 560 : 420, height: 560, background: "#fff" }}
+        style={{ maxWidth: wide ? 720 : 420, maxHeight: "85vh", background: "#fff" }}
       >
         {children}
       </div>

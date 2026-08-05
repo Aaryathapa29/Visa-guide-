@@ -37,7 +37,8 @@ const createSocket = (): Socket => {
   const socketQuery = token ? { token } : undefined;
 
   socket = io(SOCKETIO_SERVER_URL, {
-    transports: ['polling', 'websocket'],
+    // Force websocket-only transport to avoid HTTP long-polling
+    transports: ['websocket'],
     withCredentials: true,
     reconnection: true,
     reconnectionDelay: 1000,

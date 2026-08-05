@@ -17,6 +17,7 @@ from .views import (
     bookings,
     booking_detail,
     update_booking_detail,
+    experts,
 )
 
 urlpatterns = [
@@ -47,4 +48,6 @@ urlpatterns = [
     path('bookings/', bookings, name='bookings'),
     path('bookings/<int:booking_id>/', booking_detail, name='booking_detail'),
     path('bookings/<int:booking_id>/update/', update_booking_detail, name='booking_update_detail'),
+    path('experts/', experts, name='experts'),
+    path('experts/<int:expert_id>/', experts, name='expert_detail'),
 ]

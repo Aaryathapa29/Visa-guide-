@@ -91,7 +91,8 @@ export const useChatSocket = (roomId: string | number | null, explicitUserId?: n
     };
 
     const appendIncomingMessage = (data: any) => {
-      console.log("[Socket.IO CLIENT] receive_message event payload received:", data);
+      const receiveTs = new Date().toISOString();
+      console.log("[Socket.IO CLIENT] receive_message event payload received:", data, "receive_ts:", receiveTs);
       if (!data) return;
 
       if (roomId && data.room_id != null && String(data.room_id) !== String(roomId)) {
@@ -123,6 +124,12 @@ export const useChatSocket = (roomId: string | number | null, explicitUserId?: n
 
     socket.on("connect", handleConnect);
     socket.on("receive_message", appendIncomingMessage);
+    socket.on("join_room_success", (data: any) => {
+      console.log("[Socket.IO] join_room_success", data);
+    });
+    socket.on("join_room_error", (data: any) => {
+      console.warn("[Socket.IO] join_room_error", data);
+    });
 
     if (socket.connected) {
       handleConnect();
@@ -163,6 +170,8 @@ export const useChatSocket = (roomId: string | number | null, explicitUserId?: n
 
       // 2. Broadcast via Socket.IO
       if (socketRef.current && socketRef.current.connected) {
+        const emitTs = new Date().toISOString();
+        console.log("[Socket.IO CLIENT] emitting send_message", { payload, emit_ts: emitTs });
         socketRef.current.emit("send_message", payload);
       } else {
         console.warn("[Socket.IO] Cannot emit, socket is not connected");

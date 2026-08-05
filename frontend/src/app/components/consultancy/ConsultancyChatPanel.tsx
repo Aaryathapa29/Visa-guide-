@@ -66,10 +66,8 @@ export default function ConsultancyChatPanel() {
   }
 
   return (
-    <div
-      className="rounded-2xl overflow-hidden flex"
-      style={{ border: "1px solid #dce6f5", height: 500 }}
-    >
+    <div className="mx-auto max-w-lg px-4 py-6">
+      <div className="rounded-2xl overflow-hidden flex min-h-[520px]" style={{ border: "1px solid #dce6f5" }}>
       {/* Sidebar */}
       <div
         className="w-56 flex-shrink-0 flex flex-col"
@@ -138,26 +136,25 @@ export default function ConsultancyChatPanel() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ background: "#f5f7fb" }}>
-            {active.messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex ${msg.from === "consultancy" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className="max-w-[70%] px-3 py-2.5 rounded-2xl text-sm"
-                  style={{
-                    background: msg.from === "consultancy" ? DARK : "#fff",
-                    color: msg.from === "consultancy" ? "#fff" : DARK,
-                    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-                    borderBottomRightRadius: msg.from === "consultancy" ? 4 : undefined,
-                    borderBottomLeftRadius: msg.from === "aspirant" ? 4 : undefined,
-                  }}
-                >
-                  {msg.text}
+          <div className="flex-1 overflow-y-auto p-4" style={{ background: "#f5f7fb" }}>
+            <div className="mx-auto w-full max-w-lg space-y-3">
+              {active.messages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.from === "consultancy" ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className="max-w-[70%] px-3 py-2.5 rounded-2xl text-sm"
+                    style={{
+                      background: msg.from === "consultancy" ? DARK : "#fff",
+                      color: msg.from === "consultancy" ? "#fff" : DARK,
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+                      borderBottomRightRadius: msg.from === "consultancy" ? 4 : undefined,
+                      borderBottomLeftRadius: msg.from === "aspirant" ? 4 : undefined,
+                    }}
+                  >
+                    {msg.text}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           <div

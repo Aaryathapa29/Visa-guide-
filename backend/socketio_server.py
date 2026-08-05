@@ -4,7 +4,9 @@ Run this separately from the Django app: python socketio_server.py
 """
 
 import os
+from datetime import datetime
 from urllib.parse import parse_qs
+import time
 
 import aiohttp_cors
 import django
@@ -28,11 +30,13 @@ load_dotenv()
 # Allow polling fallback to increase compatibility in restrictive environments.
 sio = socketio.AsyncServer(
     async_mode='aiohttp',
-    cors_allowed_origins=['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000'],
+    # Allow all origins in dev to simplify local testing (accept websocket Origin headers)
+    cors_allowed_origins=['*'],
     ping_timeout=60,
     ping_interval=25,
     path='/socket.io',
-    transports=['polling', 'websocket'],
+    # Restrict transports to websocket only to avoid HTTP long-polling
+    transports=['websocket'],
 )
 
 app = web.Application()
@@ -41,19 +45,7 @@ sio.attach(app)
 cors = aiohttp_cors.setup(
     app,
     defaults={
-            'http://localhost:5173': aiohttp_cors.ResourceOptions(
-                allow_credentials=True,
-                allow_methods=['GET', 'POST', 'OPTIONS'],
-                allow_headers='*',
-                expose_headers='*',
-            ),
-            'http://127.0.0.1:5173': aiohttp_cors.ResourceOptions(
-                allow_credentials=True,
-                allow_methods=['GET', 'POST', 'OPTIONS'],
-                allow_headers='*',
-                expose_headers='*',
-            ),
-            'http://localhost:3000': aiohttp_cors.ResourceOptions(
+            '*': aiohttp_cors.ResourceOptions(
                 allow_credentials=True,
                 allow_methods=['GET', 'POST', 'OPTIONS'],
                 allow_headers='*',
@@ -72,6 +64,8 @@ for route in list(app.router.routes()):
 
 # Store connected users
 connected_users = {}
+# Cache room participant membership to avoid repeated DB lookups
+room_participant_cache = {}
 
 
 def parse_query_params(environ):
@@ -212,10 +206,15 @@ async def handle_join_room(sid, data):
         room_name = f'chat_{room_id}'
         await sio.enter_room(sid, room_name)
         user_data.setdefault('rooms', set()).add(room_id)
+        room_participant_cache[room_id] = {
+            'aspirant_id': room.aspirant_id,
+            'consultancy_id': room.consultancy_id,
+        }
         print(f'[Socket.IO SUCCESS] User {user.id} joined {room_name} (sid={sid})')
+        await sio.emit('join_room_success', {'room_id': room_id}, to=sid)
     else:
         print(f'[Socket.IO] User {user_id} not allowed in room {room_id}')
-        await sio.emit('auth_error', {'message': 'You are not a participant in this chat room'}, to=sid)
+        await sio.emit('join_room_error', {'message': 'You are not a participant in this chat room'}, to=sid)
 
 @sio.on('join_user_channel')
 async def handle_join_user_channel(sid, data):
@@ -241,6 +240,9 @@ async def handle_send_message(sid, data):
     if not isinstance(data, dict):
         return
 
+    event_start = time.perf_counter()
+    t1 = datetime.now()
+
     room_id_raw = data.get('room_id') or data.get('chat_room')
     if room_id_raw is None:
         return
@@ -253,22 +255,44 @@ async def handle_send_message(sid, data):
 
     user_data = connected_users.get(sid, {})
     user_id = user_data.get('id')
-    try:
-        user = await get_user_by_id(user_id) if user_id else None
-        room = await get_room_by_id(room_id)
-    except Exception as exc:
-        print(f'[Socket.IO] Failed to load chat context for message send: {exc}')
-        user = None
-        room = None
-
+    should_emit_direct = False
     recipient_id = None
-    if room and user:
-        if room.aspirant_id == user.id:
-            recipient_id = room.consultancy_id
-        elif room.consultancy_id == user.id:
-            recipient_id = room.aspirant_id
-
     room_name = f'chat_{room_id}'
+    room_cache = room_participant_cache.get(room_id)
+
+    if user_id and room_cache and room_id in user_data.get('rooms', set()):
+        if room_cache['aspirant_id'] == user_id:
+            recipient_id = room_cache['consultancy_id']
+            should_emit_direct = True
+        elif room_cache['consultancy_id'] == user_id:
+            recipient_id = room_cache['aspirant_id']
+            should_emit_direct = True
+        t2 = datetime.now()
+        print(f'[Socket.IO] send_message cache hit: room={room_id} sender={user_id} t1={t1:%H:%M:%S.%f} t2={t2:%H:%M:%S.%f}')
+    else:
+        try:
+            user = await get_user_by_id(user_id) if user_id else None
+            room = await get_room_by_id(room_id)
+        except Exception as exc:
+            print(f'[Socket.IO] Failed to load chat context for message send: {exc}')
+            user = None
+            room = None
+
+        if room and user:
+            if room.aspirant_id == user.id:
+                recipient_id = room.consultancy_id
+            elif room.consultancy_id == user.id:
+                recipient_id = room.aspirant_id
+
+            # Cache room participants for subsequent messages
+            if room_id not in room_participant_cache:
+                room_participant_cache[room_id] = {
+                    'aspirant_id': room.aspirant_id,
+                    'consultancy_id': room.consultancy_id,
+                }
+        t2 = datetime.now()
+        print(f'[Socket.IO] send_message DB path: room={room_id} sender={user_id} t1={t1:%H:%M:%S.%f} t2={t2:%H:%M:%S.%f}')
+
     message_text = (data.get('message') or data.get('content') or '').strip()
 
     payload = {
@@ -281,14 +305,27 @@ async def handle_send_message(sid, data):
         'timestamp': data.get('timestamp')
     }
 
-    # Always broadcast to room_name (chat_1)
+    # Emit to the chat room immediately; direct recipient channel is optional
     await sio.emit('receive_message', payload, room=room_name)
-    
-    # Also emit directly to recipient user room if known
     if recipient_id:
         await sio.emit('receive_message', payload, room=f'user_{recipient_id}')
-        
-    print(f'[Socket.IO] Broadcast message to room {room_name} & user_{recipient_id}')
+
+    t3 = datetime.now()
+    duration_ms = (time.perf_counter() - event_start) * 1000.0
+    print(f'[Socket.IO] receive_message emitted for room={room_name} recipient={recipient_id} t3={t3:%H:%M:%S.%f} duration={duration_ms:.2f}ms')
+
+
+@sio.on('ping_test')
+async def handle_ping_test(sid, data):
+    """Lightweight ping-pong handler for latency testing.
+
+    Expects a payload like {'seq': <int>, 'ts': <float>} and replies
+    immediately with the same payload on event 'pong_test' back to sender.
+    """
+    try:
+        await sio.emit('pong_test', data, to=sid)
+    except Exception as exc:
+        print(f'[Socket.IO] ping_test handler error: {exc}')
 @sio.on('disconnect')
 async def disconnect(sid):
     """Handle client disconnection"""

@@ -1,0 +1,4 @@
+web: .venv\Scripts\python.exe manage.py runserver 8000
+socket: .venv\Scripts\python.exe socketio_server.py
+chatbot: .venv\Scripts\python.exe -X utf8 -m uvicorn app:app --app-dir ModelInference --reload --port 8001
+doc_parser: .venv\Scripts\python.exe -X utf8 -m uvicorn main:app --app-dir document_parser_v2 --reload --port 8002

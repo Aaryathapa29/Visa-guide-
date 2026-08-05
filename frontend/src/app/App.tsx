@@ -40,6 +40,9 @@ export default function App() {
   const authRole = localStorage.getItem("authRole");
   const isAspirantAuthenticated = Boolean(accessToken && authRole === "student");
   const isConsultancyAuthenticated = Boolean(accessToken && authRole === "consultancy");
+  const isConsultancyPreview =
+    new URLSearchParams(window.location.search).get("preview") === "consultancy" ||
+    location.pathname === "/login";
 
   useEffect(() => {
     const savedToken = localStorage.getItem("accessToken");
@@ -97,7 +100,7 @@ export default function App() {
     );
   }
 
-  if (screen === "consultancy-home" || isConsultancyAuthenticated) {
+  if (screen === "consultancy-home" || isConsultancyAuthenticated || isConsultancyPreview) {
     return <ConsultancyHome />;
   }
 

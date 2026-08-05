@@ -19,9 +19,13 @@ from django.http import HttpResponse, JsonResponse
 from django.urls import include, path, re_path
 
 from authentication.views import (
+    cancel_session,
     consultancy_signup,
     country_profiles,
     get_all_consultancies,
+    consultancy_available_slots,
+    consultancy_booked_slots,
+    consultancy_sessions,
     log_consultancy_visit,
     ConsultancyNotificationsView,
     MarkNotificationsReadView,
@@ -81,6 +85,10 @@ urlpatterns = [
     path('api/log-visit/', log_consultancy_visit, name='log_consultancy_visit'),
     path('api/notifications/', ConsultancyNotificationsView.as_view(), name='get_consultancy_notifications'),
     path('api/notifications/mark-read/', MarkNotificationsReadView.as_view(), name='mark_notifications_read'),
+    path('api/consultancy/sessions/', consultancy_sessions, name='consultancy_sessions'),
+    path('api/consultancy/<int:consultancy_id>/booked-slots/', consultancy_booked_slots, name='consultancy_booked_slots'),
+    path('api/consultancy/<int:consultancy_id>/available-slots/', consultancy_available_slots, name='consultancy_available_slots'),
+    path('api/sessions/<int:session_id>/cancel/', cancel_session, name='cancel_session'),
     path('api/chat/', include(router.urls)),
     path('api/chat/rooms/ensure-current/', get_or_create_room_for_current_user, name='ensure_chat_room_current'),
     path('api/chat/rooms/<int:room_id>/messages/', room_messages, name='room_messages'),

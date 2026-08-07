@@ -11,6 +11,9 @@ import { loadConversations, saveConversations, newConversation } from "./utils/s
 import { exportMarkdown, exportJSON, copyMarkdown } from "./utils/export";
 import type { Conversation, Message } from "./types";
 import "./chatbot.css";
+import SpeechRecognition, {
+  useSpeechRecognition,
+} from "react-speech-recognition";
 
 const QUICK = [
   { c: "Canada",    q: "How much money do I need to show for a Canada study permit?" },
@@ -29,6 +32,12 @@ export default function VisaChatbot({ onClose }: { onClose: () => void }) {
   const [showUpload, setShowUpload] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth > 820);
+  const {
+  transcript,
+  listening,
+  resetTranscript,
+  browserSupportsSpeechRecognition,
+} = useSpeechRecognition();
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const textRef   = useRef<HTMLTextAreaElement>(null);
@@ -53,6 +62,11 @@ export default function VisaChatbot({ onClose }: { onClose: () => void }) {
     convosRef.current = conversations;
     if (conversations.length) saveConversations(conversations);
   }, [conversations]);
+  useEffect(() => {
+  if (transcript) {
+    setInput(transcript);
+  }
+}, [transcript]);
 
   const active = useMemo(
     () => conversations.find((c) => c.id === activeId) ?? null,
@@ -102,6 +116,65 @@ export default function VisaChatbot({ onClose }: { onClose: () => void }) {
       return next;
     });
   }, [activeId]);
+  const startListening = () => {
+  resetTranscript();
+
+  SpeechRecognition.startListening({
+    continuous: false,
+    language: "en-US",
+  });
+};
+
+const speak = (text: string) => {
+  window.speechSynthesis.cancel();
+
+  const cleanText = text
+    // Remove markdown headings
+    .replace(/^#{1,6}\s+/gm, "")
+
+    // Remove bold (**text**)
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+
+    // Remove italic (*text*)
+    .replace(/\*(.*?)\*/g, "$1")
+
+    // Remove inline code (`text`)
+    .replace(/`(.*?)`/g, "$1")
+
+    // Convert markdown links [text](url) → text
+    .replace(/\[(.*?)\]\((.*?)\)/g, "$1")
+
+    // Remove bullet points
+    .replace(/^\s*[-*+]\s+/gm, "")
+
+    // Remove numbered list markers (1. 2. etc.)
+    .replace(/^\s*\d+\.\s+/gm, "")
+
+    // Remove horizontal rules
+    .replace(/^---+$/gm, "")
+
+    // Remove "Sources" section completely
+    .replace(/Sources[\s\S]*$/i, "")
+
+    // Replace new lines with pauses
+    .replace(/\n+/g, ". ")
+
+    // Remove extra spaces
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  const speech = new SpeechSynthesisUtterance(cleanText);
+
+  speech.lang = "en-US";
+  speech.rate = 1;
+  speech.pitch = 1;
+
+  window.speechSynthesis.speak(speech);
+};
+
+const stopSpeaking = () => {
+  window.speechSynthesis.cancel();
+};
 
   const handleSend = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -130,6 +203,8 @@ export default function VisaChatbot({ onClose }: { onClose: () => void }) {
 
     try {
       const res = await sendMessage(trimmed, activeId, priorTurns);
+
+speak(res.answer);
       const botMsg: Message = {
         id: uid(), role: "bot", text: res.answer,
         country: res.country ?? undefined, sources: res.sources, ts: Date.now(),
@@ -300,6 +375,20 @@ export default function VisaChatbot({ onClose }: { onClose: () => void }) {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                   strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+              </button>
+              <button
+               className={`circlebtn ${listening ? "circlebtn--active" : ""}`}
+               onClick={startListening}
+               title="Speak"
+              >
+               🎤
+              </button>
+              <button
+                className="circlebtn"
+                onClick={stopSpeaking}
+                title="Stop speaking"
+              >
+                ⏹️
               </button>
               <button
                 className="circlebtn circlebtn--send"

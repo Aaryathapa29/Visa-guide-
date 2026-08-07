@@ -66,15 +66,11 @@ export default function ConsultancyChatPanel() {
   }
 
   return (
-<<<<<<< HEAD
     <div className="mx-auto max-w-lg px-4 py-6">
-      <div className="rounded-2xl overflow-hidden flex min-h-[520px]" style={{ border: "1px solid #dce6f5" }}>
-=======
-    <div
-      className="flex overflow-hidden rounded-[24px] border border-slate-200/80 shadow-[0_18px_56px_-24px_rgba(10,31,68,0.28)]"
-      style={{ height: 500 }}
-    >
->>>>>>> 993ad9dd29b971e6e7b9fdb2529e1bc6c3c13183
+      <div
+        className="flex min-h-[520px] overflow-hidden rounded-[24px] border border-slate-200/80 shadow-[0_18px_56px_-24px_rgba(10,31,68,0.28)]"
+        style={{ border: "1px solid #dce6f5" }}
+      >
       {/* Sidebar */}
       <div
         className="w-56 flex-shrink-0 flex flex-col"
@@ -144,42 +140,25 @@ export default function ConsultancyChatPanel() {
             </div>
           </div>
 
-<<<<<<< HEAD
-          <div className="flex-1 overflow-y-auto p-4" style={{ background: "#f5f7fb" }}>
+          <div
+            className="flex-1 overflow-y-auto p-4 space-y-3"
+            style={{ background: "linear-gradient(180deg, #f8fbff 0%, #f3f7fc 100%)" }}
+          >
             <div className="mx-auto w-full max-w-lg space-y-3">
               {active.messages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.from === "consultancy" ? "justify-end" : "justify-start"}`}>
                   <div
-                    className="max-w-[70%] px-3 py-2.5 rounded-2xl text-sm"
+                    className="max-w-[70%] rounded-[16px] px-3 py-2.5 text-sm"
                     style={{
-                      background: msg.from === "consultancy" ? DARK : "#fff",
+                      background: msg.from === "consultancy" ? "linear-gradient(135deg, #0d1b3e 0%, #1a3a6b 100%)" : "#fff",
                       color: msg.from === "consultancy" ? "#fff" : DARK,
-                      boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+                      boxShadow: "0 8px 24px -14px rgba(10,31,68,0.24)",
                       borderBottomRightRadius: msg.from === "consultancy" ? 4 : undefined,
                       borderBottomLeftRadius: msg.from === "aspirant" ? 4 : undefined,
                     }}
                   >
                     {msg.text}
                   </div>
-=======
-          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ background: "linear-gradient(180deg, #f8fbff 0%, #f3f7fc 100%)" }}>
-            {active.messages.map((msg, i) => (
-              <div
-                key={i}
-                className={`flex ${msg.from === "consultancy" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className="max-w-[70%] rounded-[16px] px-3 py-2.5 text-sm"
-                  style={{
-                    background: msg.from === "consultancy" ? "linear-gradient(135deg, #0d1b3e 0%, #1a3a6b 100%)" : "#fff",
-                    color: msg.from === "consultancy" ? "#fff" : DARK,
-                    boxShadow: "0 8px 24px -14px rgba(10,31,68,0.24)",
-                    borderBottomRightRadius: msg.from === "consultancy" ? 4 : undefined,
-                    borderBottomLeftRadius: msg.from === "aspirant" ? 4 : undefined,
-                  }}
-                >
-                  {msg.text}
->>>>>>> 993ad9dd29b971e6e7b9fdb2529e1bc6c3c13183
                 </div>
               ))}
             </div>

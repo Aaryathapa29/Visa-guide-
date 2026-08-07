@@ -64,7 +64,7 @@ export default function ProfileDropdown({
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-white/5 text-white/90 transition-colors hover:border-[#f97316] hover:text-[#f97316]"
+        className="grid h-10 w-10 place-items-center rounded-full border border-white/15 bg-white/10 text-white/90 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#f97316] hover:bg-white/15 hover:text-[#f97316]"
         aria-label="Profile menu"
         aria-expanded={isOpen}
       >
@@ -72,7 +72,7 @@ export default function ProfileDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-12 z-50 w-48 rounded-lg border border-slate-200 bg-white shadow-lg">
+        <div className="absolute right-0 top-12 z-50 w-52 rounded-[16px] border border-slate-200/80 bg-white p-1 shadow-[0_18px_42px_-20px_rgba(10,31,68,0.35)]">
           {resolvedName && (
             <div className="border-b border-slate-100 px-4 py-3">
               <p className="text-xs text-slate-600">Signed in as</p>
@@ -82,7 +82,7 @@ export default function ProfileDropdown({
 
           <button
             onClick={handleSettingsClick}
-            className="flex w-full items-center gap-3 px-4 py-3 text-sm text-slate-700 transition-colors hover:bg-slate-50"
+            className="flex w-full items-center gap-3 rounded-[12px] px-4 py-3 text-sm text-slate-700 transition-all duration-200 hover:bg-slate-50"
           >
             <Settings className="h-4 w-4" />
             Account Settings
@@ -90,7 +90,7 @@ export default function ProfileDropdown({
 
           <button
             onClick={handleLogoutClick}
-            className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 text-sm text-red-600 transition-colors hover:bg-red-50"
+            className="mt-1 flex w-full items-center gap-3 rounded-[12px] border-t border-slate-100 px-4 py-3 text-sm text-red-600 transition-all duration-200 hover:bg-red-50"
           >
             <LogOut className="h-4 w-4" />
             Logout

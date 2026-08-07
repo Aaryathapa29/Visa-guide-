@@ -66,14 +66,21 @@ export default function ConsultancyChatPanel() {
   }
 
   return (
+<<<<<<< HEAD
     <div className="mx-auto max-w-lg px-4 py-6">
       <div className="rounded-2xl overflow-hidden flex min-h-[520px]" style={{ border: "1px solid #dce6f5" }}>
+=======
+    <div
+      className="flex overflow-hidden rounded-[24px] border border-slate-200/80 shadow-[0_18px_56px_-24px_rgba(10,31,68,0.28)]"
+      style={{ height: 500 }}
+    >
+>>>>>>> 993ad9dd29b971e6e7b9fdb2529e1bc6c3c13183
       {/* Sidebar */}
       <div
         className="w-56 flex-shrink-0 flex flex-col"
-        style={{ borderRight: "1px solid #dce6f5", background: "#fff" }}
+        style={{ borderRight: "1px solid #e5ebf4", background: "#fcfdff" }}
       >
-        <div className="px-4 py-3" style={{ borderBottom: "1px solid #dce6f5" }}>
+        <div className="px-4 py-3" style={{ borderBottom: "1px solid #e5ebf4", background: "#f8fbff" }}>
           <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#5a6e8a" }}>
             Aspirant Messages
           </p>
@@ -83,16 +90,17 @@ export default function ConsultancyChatPanel() {
             <button
               key={t.id}
               onClick={() => markRead(t.id)}
-              className="w-full text-left flex items-center gap-3 px-4 py-3 transition-colors"
+              className="w-full text-left flex items-center gap-3 px-4 py-3 transition-all duration-200"
               style={{
-                background: activeId === t.id ? "#eef2fb" : "transparent",
+                background: activeId === t.id ? "#eef4ff" : "transparent",
                 borderLeft: activeId === t.id ? `3px solid ${ACCENT}` : "3px solid transparent",
+                boxShadow: activeId === t.id ? "inset 0 1px 0 rgba(255,255,255,0.45)" : "none",
               }}
               aria-label={`Open chat with ${t.aspirant}`}
             >
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                style={{ background: DARK, color: "#fff" }}
+                style={{ background: "linear-gradient(135deg, #0d1b3e 0%, #1a3a6b 100%)", color: "#fff" }}
               >
                 {t.avatar}
               </div>
@@ -106,8 +114,8 @@ export default function ConsultancyChatPanel() {
               </div>
               {t.unread > 0 && (
                 <span
-                  className="text-xs px-1.5 rounded-full font-semibold flex-shrink-0"
-                  style={{ background: ACCENT, color: "#fff", fontSize: "0.65rem" }}
+                  className="flex-shrink-0 rounded-full px-1.5 text-xs font-semibold"
+                  style={{ background: ACCENT, color: "#fff", fontSize: "0.65rem", boxShadow: "0 6px 16px -10px rgba(37, 99, 235, 0.6)" }}
                 >
                   {t.unread}
                 </span>
@@ -122,11 +130,11 @@ export default function ConsultancyChatPanel() {
         <div className="flex-1 flex flex-col">
           <div
             className="flex items-center gap-3 px-4 py-3"
-            style={{ borderBottom: "1px solid #dce6f5", background: "#fff" }}
+            style={{ borderBottom: "1px solid #e5ebf4", background: "#fcfdff" }}
           >
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-              style={{ background: DARK, color: "#fff" }}
+              style={{ background: "linear-gradient(135deg, #0d1b3e 0%, #1a3a6b 100%)", color: "#fff" }}
             >
               {active.avatar}
             </div>
@@ -136,6 +144,7 @@ export default function ConsultancyChatPanel() {
             </div>
           </div>
 
+<<<<<<< HEAD
           <div className="flex-1 overflow-y-auto p-4" style={{ background: "#f5f7fb" }}>
             <div className="mx-auto w-full max-w-lg space-y-3">
               {active.messages.map((msg, i) => (
@@ -152,6 +161,25 @@ export default function ConsultancyChatPanel() {
                   >
                     {msg.text}
                   </div>
+=======
+          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ background: "linear-gradient(180deg, #f8fbff 0%, #f3f7fc 100%)" }}>
+            {active.messages.map((msg, i) => (
+              <div
+                key={i}
+                className={`flex ${msg.from === "consultancy" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className="max-w-[70%] rounded-[16px] px-3 py-2.5 text-sm"
+                  style={{
+                    background: msg.from === "consultancy" ? "linear-gradient(135deg, #0d1b3e 0%, #1a3a6b 100%)" : "#fff",
+                    color: msg.from === "consultancy" ? "#fff" : DARK,
+                    boxShadow: "0 8px 24px -14px rgba(10,31,68,0.24)",
+                    borderBottomRightRadius: msg.from === "consultancy" ? 4 : undefined,
+                    borderBottomLeftRadius: msg.from === "aspirant" ? 4 : undefined,
+                  }}
+                >
+                  {msg.text}
+>>>>>>> 993ad9dd29b971e6e7b9fdb2529e1bc6c3c13183
                 </div>
               ))}
             </div>
@@ -159,20 +187,20 @@ export default function ConsultancyChatPanel() {
 
           <div
             className="flex items-center gap-3 px-4 py-3"
-            style={{ borderTop: "1px solid #dce6f5", background: "#fff" }}
+            style={{ borderTop: "1px solid #e5ebf4", background: "#fcfdff" }}
           >
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
               placeholder={`Reply to ${active.aspirant}…`}
-              className="flex-1 rounded-xl px-4 py-2.5 text-sm outline-none"
-              style={{ background: "#f5f7fb", border: "1.5px solid #dce6f5", color: DARK }}
+              className="flex-1 rounded-[14px] px-4 py-2.5 text-sm outline-none transition-all duration-200"
+              style={{ background: "#f8fbff", border: "1.5px solid #dce6f5", color: DARK, boxShadow: "inset 0 1px 2px rgba(10,31,68,0.04)" }}
               aria-label="Reply input"
             />
             <button
               onClick={send}
-              className="w-9 h-9 rounded-xl flex items-center justify-center transition-opacity hover:opacity-80"
+              className="w-9 h-9 rounded-[12px] flex items-center justify-center transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_18px_-10px_rgba(37,99,235,0.6)]"
               style={{ background: ACCENT }}
               aria-label="Send reply"
             >
@@ -181,7 +209,7 @@ export default function ConsultancyChatPanel() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3" style={{ background: "#f5f7fb" }}>
+        <div className="flex-1 flex flex-col items-center justify-center gap-3" style={{ background: "linear-gradient(180deg, #f8fbff 0%, #f3f7fc 100%)" }}>
           <MessageCircle className="w-10 h-10" style={{ color: "#c7d8f0" }} />
           <p className="text-sm" style={{ color: "#5a6e8a" }}>Select a conversation to respond</p>
         </div>

@@ -119,14 +119,13 @@ export default function ConsultancyProfilePage({ consultancyId }: { consultancyI
   }, [consultancyId]);
 
   return (
-    <div className="min-h-screen" style={{ background: "#f0f4f8" }}>
-      <header className="sticky top-0 z-20 border-b backdrop-blur" style={{ background: "rgba(240,244,248,0.92)", borderColor: "#dce6f5" }}>
+    <div className="min-h-screen" style={{ background: "linear-gradient(180deg, #f8fbff 0%, #f3f7fc 100%)" }}>
+      <header className="sticky top-0 z-20 border-b border-slate-200/80 backdrop-blur" style={{ background: "rgba(248,251,255,0.95)" }}>
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 md:px-8">
           <button
             type="button"
             onClick={() => navigate("/")}
-            className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors hover:opacity-90"
-            style={{ background: "#eef2fb", color: "#0d1b3e" }}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-[#0a1f44] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#f97316] hover:text-[#f97316]"
           >
             <ArrowLeft className="h-4 w-4" />
             Back
@@ -145,7 +144,7 @@ export default function ConsultancyProfilePage({ consultancyId }: { consultancyI
             message="Fetching profile details and logging the visit."
           />
         ) : error ? (
-          <div className="rounded-3xl border bg-white p-10 text-center" style={{ borderColor: "#dce6f5" }}>
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-10 text-center shadow-[0_10px_40px_-18px_rgba(10,31,68,.24)]" style={{ borderColor: "#dce6f5" }}>
             <AlertCircle className="mx-auto h-10 w-10" style={{ color: "#dc2626" }} />
             <h1 className="mt-4 font-bold" style={{ color: "#0d1b3e", fontSize: "1.2rem" }}>{error}</h1>
             <p className="mt-2 text-sm" style={{ color: "#5a6e8a" }}>Please go back and try another consultancy.</p>
@@ -159,33 +158,38 @@ export default function ConsultancyProfilePage({ consultancyId }: { consultancyI
                   <h2 className="mt-2 text-2xl font-medium text-slate-900 sm:text-3xl">
                     {consultancy?.office_name || consultancy?.username || "Consultancy"}
                   </h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Explore the visa guidance pages published by this consultancy for each destination.
+                  </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="rounded-full bg-[#f8fbff] px-3 py-1 text-sm font-semibold text-[#0a1f44]">
-                    {countryProfiles.length} published
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setBookingOpen(true)}
-                    className="rounded-full px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-                    style={{ background: "#0a1f44" }}
-                  >
-                    Book counselling
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleMessageConsultancy}
-                    disabled={messagingLoading}
-                    className="rounded-full px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
-                    style={{ background: "#f97316" }}
-                  >
-                    {messagingLoading ? "Starting chat…" : "Message consultancy"}
-                  </button>
-                </div>
+<div className="flex flex-wrap items-center gap-3">
+  <div className="rounded-full bg-[#f8fbff] px-3 py-1 text-sm font-semibold text-[#0a1f44]">
+    {countryProfiles.length} published
+  </div>
+  <button
+    type="button"
+    onClick={() => setBookingOpen(true)}
+    className="rounded-full px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+    style={{ background: "#0a1f44" }}
+  >
+    Book counselling
+  </button>
+  <button
+    type="button"
+    onClick={handleMessageConsultancy}
+    disabled={messagingLoading}
+    className="rounded-full px-4 py-2 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
+    style={{ background: "#f97316" }}
+  >
+    {messagingLoading ? "Starting chat…" : "Message consultancy"}
+  </button>
+</div>
+
+               
               </div>
 
               {countryProfiles.length === 0 ? (
-                <div className="mt-6 rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-sm leading-7 text-slate-700">
+                <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm leading-7 text-slate-700">
                   This consultancy has not published any country profiles yet.
                 </div>
               ) : (
@@ -199,7 +203,7 @@ export default function ConsultancyProfilePage({ consultancyId }: { consultancyI
                         onClick={() => {
                           navigate(countryRoute);
                         }}
-                        className="group rounded-[1.5rem] border border-slate-200 bg-[#f8fbff] p-5 text-left transition-all duration-300 hover:-translate-y-1 hover:border-[#f97316] hover:bg-[#fff8f1] hover:shadow-[0_20px_45px_-20px_rgba(10,31,68,.35)]"
+                        className="group rounded-[1.5rem] border border-slate-200 bg-[#f8fbff] p-5 text-left shadow-[0_10px_28px_-18px_rgba(10,31,68,.22)] transition-all duration-300 hover:-translate-y-1 hover:border-[#f97316] hover:bg-[#fff8f1] hover:shadow-[0_20px_40px_-20px_rgba(10,31,68,.32)]"
                       >
                         <div className="flex items-center gap-3">
                           <span className="grid h-11 w-11 place-items-center rounded-full bg-white text-[#f97316] shadow-sm transition group-hover:scale-105">

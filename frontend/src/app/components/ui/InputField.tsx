@@ -37,7 +37,7 @@ export default function InputField({
   const [focused, setFocused] = useState(false);
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <div className="flex items-center gap-1.5">
         <label
           htmlFor={id}
@@ -65,11 +65,11 @@ export default function InputField({
       </div>
 
       <div
-        className="flex items-center gap-3 rounded-2xl px-4 py-3 transition-all duration-200"
+        className="flex items-center gap-3 rounded-[16px] px-4 py-3.5 transition-all duration-200"
         style={{
-          background: disabled ? "#f5f7fb" : focused ? "#eef4ff" : "#f8fbff",
+          background: disabled ? "#f5f7fb" : focused ? "#ffffff" : "#fbfdff",
           border: `1.5px solid ${focused ? "#0a1f44" : "#dce6f5"}`,
-          boxShadow: focused ? "0 0 0 3px rgba(10,31,68,0.12)" : "none",
+          boxShadow: focused ? "0 0 0 4px rgba(10,31,68,0.08)" : "0 8px 24px -14px rgba(10,31,68,0.16)",
         }}
       >
         <span style={{ color: focused ? "#0a1f44" : "#5a6e8a" }}>{icon}</span>

@@ -25,12 +25,12 @@ function SelectionCard({
 
   return (
     <div
-      className="rounded-2xl p-6 flex flex-col gap-4 transition-all duration-200"
+      className="flex flex-col gap-4 rounded-[20px] p-6 transition-all duration-300"
       style={{
-        background: hovered ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.07)",
-        border: `1.5px solid ${hovered ? border : "rgba(255,255,255,0.12)"}`,
-        transform: hovered ? "translateY(-2px)" : "none",
-        boxShadow: hovered ? "0 12px 32px rgba(0,0,0,0.25)" : "none",
+        background: hovered ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.08)",
+        border: `1.5px solid ${hovered ? border : "rgba(255,255,255,0.16)"}`,
+        transform: hovered ? "translateY(-4px) scale(1.01)" : "none",
+        boxShadow: hovered ? "0 16px 40px rgba(2, 12, 27, 0.22)" : "0 8px 24px rgba(2, 12, 27, 0.12)",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -52,7 +52,7 @@ function SelectionCard({
         <button
           type="button"
           onClick={onSelect}
-          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-1 focus-visible:ring-offset-blue-900"
+          className="w-full flex items-center justify-center gap-1.5 rounded-[14px] py-2.75 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-1 focus-visible:ring-offset-blue-900"
           style={{ background: accent, color: "#0d1b3e", fontSize: "0.82rem", fontWeight: 700 }}
           aria-label={`Sign up as ${title}`}
         >
@@ -61,7 +61,7 @@ function SelectionCard({
         <button
           type="button"
           onClick={onSignIn}
-          className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-1 focus-visible:ring-offset-blue-900"
+          className="w-full flex items-center justify-center gap-1.5 rounded-[14px] py-2.75 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-1 focus-visible:ring-offset-blue-900"
           style={{
             background: "rgba(255,255,255,0.08)",
             color: "rgba(255,255,255,0.8)",
@@ -108,8 +108,8 @@ export default function RoleSelection({
 }) {
   return (
     <div
-      className="min-h-screen w-full flex flex-col items-center justify-center p-6 relative"
-      style={{ background: "linear-gradient(160deg, #0d1b3e 0%, #1a3a6b 55%, #1e4080 100%)" }}
+      className="relative flex min-h-screen w-full flex-col items-center justify-center p-6"
+      style={{ background: "linear-gradient(145deg, #071735 0%, #0d1b3e 46%, #17366a 100%)" }}
     >
       {/* Background orbs */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">

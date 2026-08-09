@@ -168,6 +168,8 @@ GROQ_FALLBACK_MODEL = os.getenv('GROQ_FALLBACK_MODEL', 'llama-3.1-8b-instant')
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'no-reply@visa-guide.local'
 FRONTEND_URL = 'http://localhost:5173'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Configure Django REST Framework to use JWT Authentication by default
 REST_FRAMEWORK = {

@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { Settings, LogOut, User } from "lucide-react";
+import { Settings, LogOut, Building2 } from "lucide-react";
 
 interface ProfileDropdownProps {
   userName?: string;
@@ -60,6 +60,17 @@ export default function ProfileDropdown({
     }
   })();
 
+  const resolvedLogoUrl = (() => {
+    try {
+      const raw = localStorage.getItem("authUser");
+      if (!raw) return "";
+      const u = JSON.parse(raw);
+      return (u.logo_url || "").toString().trim();
+    } catch {
+      return "";
+    }
+  })();
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -68,7 +79,15 @@ export default function ProfileDropdown({
         aria-label="Profile menu"
         aria-expanded={isOpen}
       >
-        <User className="h-5 w-5" />
+        {resolvedLogoUrl ? (
+          <img
+            src={resolvedLogoUrl}
+            alt={resolvedName || "Profile avatar"}
+            className="h-full w-full rounded-full object-cover"
+          />
+        ) : (
+          <Building2 className="h-5 w-5" />
+        )}
       </button>
 
       {isOpen && (

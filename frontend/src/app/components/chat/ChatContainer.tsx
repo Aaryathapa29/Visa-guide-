@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { MessageCircle, Send } from "lucide-react";
+import { MessageCircle, Send, Building2 } from "lucide-react";
 import { ensureChatRoom, fetchChatRooms, type ChatRoomSummary } from "../../../api/chatApi";
 import { useChatSocket } from "../../../hooks/useChatSocket";
 
@@ -75,6 +75,14 @@ export default function ChatContainer() {
     setActiveRoomId(room.id);
   };
 
+  const renderAvatar = (logoUrl?: string | null, label = "Consultancy") => {
+    if (logoUrl) {
+      return <img src={logoUrl} alt={label} className="h-full w-full object-cover" />;
+    }
+
+    return <Building2 className="h-4 w-4 text-white" />;
+  };
+
   return (
     <div className="flex h-[560px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="w-72 flex-shrink-0 border-r border-slate-200 bg-slate-50/80">
@@ -89,10 +97,17 @@ export default function ChatContainer() {
               className={`w-full border-l-4 px-4 py-3 text-left transition-colors ${activeRoomId === room.id ? "bg-orange-50" : "bg-transparent hover:bg-white"}`}
               style={{ borderLeftColor: activeRoomId === room.id ? ACCENT : "transparent" }}
             >
-              <div className="text-sm font-semibold text-slate-900">
-                {room.opponent_display_name || room.consultancy_name}
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-orange-500 to-orange-600 text-xs font-bold text-white">
+                  {renderAvatar(room.consultancy_logo_url, room.opponent_display_name || room.consultancy_name)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-slate-900">
+                    {room.opponent_display_name || room.consultancy_name}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500">Room #{room.id}</div>
+                </div>
               </div>
-              <div className="mt-1 text-xs text-slate-500">Room #{room.id}</div>
             </button>
           ))}
         </div>
@@ -101,8 +116,8 @@ export default function ChatContainer() {
       {activeRoom ? (
         <div className="flex-1 flex flex-col">
           <div className="flex items-center gap-3 border-b border-slate-200 bg-white px-4 py-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-orange-600 text-xs font-bold text-white">
-              {(activeRoom.opponent_display_name || activeRoom.consultancy_name || "C").slice(0, 1).toUpperCase()}
+            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-orange-500 to-orange-600 text-xs font-bold text-white">
+              {renderAvatar(activeRoom.consultancy_logo_url, activeRoom.opponent_display_name || activeRoom.consultancy_name)}
             </div>
             <div>
               <div className="text-sm font-semibold text-slate-900">

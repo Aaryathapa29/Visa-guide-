@@ -146,6 +146,7 @@ class UserSerializer(serializers.ModelSerializer):
     display_name = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
     fullName = serializers.SerializerMethodField()
+    logo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -158,6 +159,7 @@ class UserSerializer(serializers.ModelSerializer):
             'is_verified',
             'license_number',
             'office_name',
+            'logo_url',
             'display_name',
             'full_name',
             'fullName',
@@ -173,6 +175,17 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_fullName(self, obj):
         return self._resolve_name(obj)
+
+    def get_logo_url(self, obj):
+        logo_url = getattr(obj, 'logo_url', None)
+        if not logo_url:
+            return None
+
+        request = self.context.get('request')
+        if request and isinstance(logo_url, str) and logo_url.startswith('/'):
+            return request.build_absolute_uri(logo_url)
+
+        return logo_url
 
     def _resolve_name(self, obj):
         return (
@@ -249,7 +262,8 @@ class LoginSerializer(serializers.Serializer):
             user.email or
             ''
         )
-        serialized_user = UserSerializer(user).data
+        request = self.context.get('request')
+        serialized_user = UserSerializer(user, context={'request': request}).data
 
         # When the user object is sent to the frontend, ensure a consistent name
         # field exists for the profile dropdown.

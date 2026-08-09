@@ -62,6 +62,10 @@ If you already have a backend virtual environment, activate it and continue from
 
 ### 1) Backend environment
 
+taskkill //F //IM python.exe 2>/dev/null
+
+taskkill //F //PID $(netstat -ano | grep :8003 | awk '{print $5}' | head -n 1) 2>/dev/null; honcho start
+
 #### Git Bash / WSL
 
 ```bash
@@ -96,9 +100,7 @@ python manage.py runserver 8000
 Open a second terminal.
 
 ```bash
-cd backend
-source .venv/Scripts/activate
-python socketio_server.py
+cd backendpython socketio_server.py
 ```
 
 By default the socket service listens on port 8003.

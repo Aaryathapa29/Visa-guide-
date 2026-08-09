@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowRight, Globe2, AlertCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Globe2, AlertCircle, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import API from "../../../api";
 import { ensureChatRoom } from "../../../api/chatApi";
@@ -11,6 +11,7 @@ type Consultancy = {
   username: string;
   email: string;
   office_name: string | null;
+  logo_url: string | null;
 };
 
 type CountryProfile = {
@@ -153,14 +154,27 @@ export default function ConsultancyProfilePage({ consultancyId }: { consultancyI
           <>
             <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_10px_40px_-18px_rgba(10,31,68,.24)] md:p-8">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-5">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[.24em] text-[#f97316]">Country guidance</p>
-                  <h2 className="mt-2 text-2xl font-medium text-slate-900 sm:text-3xl">
-                    {consultancy?.office_name || consultancy?.username || "Consultancy"}
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Explore the visa guidance pages published by this consultancy for each destination.
-                  </p>
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    {consultancy?.logo_url ? (
+                      <img
+                        src={consultancy.logo_url}
+                        alt={consultancy.office_name || consultancy.username || "Consultancy"}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Building2 className="h-7 w-7 text-[#0a1f44]" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[.24em] text-[#f97316]">Country guidance</p>
+                    <h2 className="mt-2 text-2xl font-medium text-slate-900 sm:text-3xl">
+                      {consultancy?.office_name || consultancy?.username || "Consultancy"}
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Explore the visa guidance pages published by this consultancy for each destination.
+                    </p>
+                  </div>
                 </div>
 <div className="flex flex-wrap items-center gap-3">
   <div className="rounded-full bg-[#f8fbff] px-3 py-1 text-sm font-semibold text-[#0a1f44]">

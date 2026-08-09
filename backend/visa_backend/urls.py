@@ -15,6 +15,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.conf import settings
+from django.conf.urls.static import static
 from django.http import HttpResponse, JsonResponse
 from django.urls import include, path, re_path
 
@@ -27,6 +29,7 @@ from authentication.views import (
     consultancy_booked_slots,
     consultancy_sessions,
     log_consultancy_visit,
+    consultancy_profile_picture,
     ConsultancyNotificationsView,
     MarkNotificationsReadView,
 )
@@ -80,6 +83,7 @@ urlpatterns = [
     path('api/chatbot/', include('chatbot.urls')),
     path('api/signup/consultancy/', consultancy_signup, name='consultancy_signup'),
     path('api/consultancies/', get_all_consultancies, name='get_all_consultancies'),
+    re_path(r'^api/consultancy/profile-picture/?$', consultancy_profile_picture, name='consultancy_profile_picture'),
     path('api/country-profiles/', country_profiles, name='country_profiles'),
     path('api/country-profiles/<int:profile_id>/', country_profiles, name='country_profile_detail'),
     path('api/log-visit/', log_consultancy_visit, name='log_consultancy_visit'),
@@ -93,3 +97,6 @@ urlpatterns = [
     path('api/chat/rooms/ensure-current/', get_or_create_room_for_current_user, name='ensure_chat_room_current'),
     path('api/chat/rooms/<int:room_id>/messages/', room_messages, name='room_messages'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

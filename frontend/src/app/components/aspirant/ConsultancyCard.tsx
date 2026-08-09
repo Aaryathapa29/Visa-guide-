@@ -7,7 +7,7 @@ interface ConsultancyCardProps {
   username: string;
   email: string;
   officeName: string | null;
-  logo?: string;
+  logoUrl?: string | null;
   onClick: () => void;
 }
 export default function ConsultancyCard({ 
@@ -15,10 +15,9 @@ export default function ConsultancyCard({
   username, 
   email, 
   officeName, 
-  logo,
+  logoUrl,
   onClick 
 }: ConsultancyCardProps) {
-  console.log("CARD RECEIVED LOGO:", logo, title);
   return (
   
   <button
@@ -33,15 +32,17 @@ export default function ConsultancyCard({
 
         <div className="flex items-start gap-4">
 
-          {logo && (
-         <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-2 shadow">
-         <img
-           src={logo}
-           alt={title}
-        className="max-h-full max-w-full object-contain"
-/>
-      </div>
-    )}
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-2 shadow">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={title}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <Building2 className="h-7 w-7 text-[#0a1f44]" />
+            )}
+          </div>
 
           <div className="min-w-0 flex-1">
             <h3 className="aspirant-serif text-xl leading-tight">

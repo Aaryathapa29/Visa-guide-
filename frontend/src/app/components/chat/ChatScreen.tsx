@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Paperclip, Send } from "lucide-react";
+import { ArrowLeft, Paperclip, Send, Building2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
-import { fetchRoomMessages, type ChatRoomSummary } from "../../../api/chatApi";
+import { fetchChatRooms, fetchRoomMessages, type ChatRoomSummary } from "../../../api/chatApi";
 import { useChatSocket } from "../../../hooks/useChatSocket";
 
 function getStoredUser() {
@@ -11,15 +11,6 @@ function getStoredUser() {
   } catch {
     return null;
   }
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((word) => word[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 export default function ChatScreen() {
@@ -33,6 +24,7 @@ export default function ChatScreen() {
     opponent_display_name: "Consultant",
     aspirant_name: "Aspirant",
     consultancy_name: "Consultancy",
+    consultancy_logo_url: null,
   });
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
@@ -56,19 +48,12 @@ export default function ChatScreen() {
     async function loadRoomDetails() {
       try {
         await fetchRoomMessages(roomIdNum);
-        const aspirantName = room?.aspirant_name || "Aspirant";
-        const consultancyName = room?.consultancy_name || "Consultancy";
-        const opponentName = currentUserId === room?.aspirant ? consultancyName : aspirantName;
+        const rooms = await fetchChatRooms();
+        const selectedRoom = rooms.find((item) => item.id === roomIdNum);
 
-        setRoom({
-          id: roomIdNum,
-          aspirant: room?.aspirant ?? 0,
-          consultancy: room?.consultancy ?? 0,
-          created_at: room?.created_at ?? new Date().toISOString(),
-          opponent_display_name: opponentName,
-          aspirant_name: aspirantName,
-          consultancy_name: consultancyName,
-        });
+        if (selectedRoom) {
+          setRoom(selectedRoom);
+        }
       } catch {
         navigate("/");
       } finally {
@@ -77,7 +62,7 @@ export default function ChatScreen() {
     }
 
     loadRoomDetails();
-  }, [roomIdNum, navigate, currentUserId, room.aspirant, room.consultancy, room.aspirant_name, room.consultancy_name]);
+  }, [roomIdNum, navigate]);
 
   const handleSend = async () => {
     const trimmed = input.trim();
@@ -93,7 +78,6 @@ export default function ChatScreen() {
   };
 
   const opponentName = room.opponent_display_name || "Consultant";
-  const opponentInitials = getInitials(opponentName);
 
   if (loading) {
     return (
@@ -141,8 +125,12 @@ export default function ChatScreen() {
             ) : (
               // Opponent Message (Left, White with initials)
               <div key={message.id} className="flex items-end gap-3">
-                <div className="bg-[#111827] text-white font-bold text-xs w-8 h-8 rounded-lg flex items-center justify-center shrink-0 flex-col">
-                  {opponentInitials}
+                <div className="bg-[#111827] text-white font-bold text-xs w-8 h-8 rounded-lg flex items-center justify-center shrink-0 overflow-hidden flex-col">
+                  {room.consultancy_logo_url ? (
+                    <img src={room.consultancy_logo_url} alt={opponentName} className="h-full w-full object-cover" />
+                  ) : (
+                    <Building2 className="h-4 w-4" />
+                  )}
                 </div>
                 <div className="bg-white text-slate-800 px-6 py-4 rounded-3xl max-w-lg text-sm shadow-sm border border-slate-100 leading-relaxed">
                   {message.text}

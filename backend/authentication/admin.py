@@ -36,12 +36,12 @@ class CustomUserAdmin(UserAdmin):
     
     # Structure when opening up details of an existing profile
     fieldsets = UserAdmin.fieldsets + (
-        ('Role & Business Verification', {'fields': ('role', 'is_verified', 'license_number', 'office_name')}),
+        ('Role & Business Verification', {'fields': ('role', 'is_verified', 'license_number', 'office_name', 'logo_url')}),
     )
     
     # Setup parameters when deploying a record fresh from Admin dashboard
     add_fieldsets = UserAdmin.add_fieldsets + (
-        ('Role & Business Verification', {'fields': ('role', 'is_verified', 'license_number', 'office_name')}),
+        ('Role & Business Verification', {'fields': ('role', 'is_verified', 'license_number', 'office_name', 'logo_url')}),
     )
 
     actions = ['approve_consultancies', 'reject_consultancies']

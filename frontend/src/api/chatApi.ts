@@ -8,6 +8,7 @@ export interface ChatRoomSummary {
   opponent_display_name: string;
   aspirant_name: string;
   consultancy_name: string;
+  consultancy_logo_url?: string | null;
 }
 
 export interface ChatMessage {

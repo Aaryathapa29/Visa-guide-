@@ -29,6 +29,7 @@ class User(AbstractUser):
     is_verified = models.BooleanField(default=False) 
     license_number = models.CharField(max_length=50, blank=True, null=True)
     office_name = models.CharField(max_length=255, blank=True, null=True)
+    logo_url = models.TextField(blank=True, null=True)
 
 
 class Notification(models.Model):

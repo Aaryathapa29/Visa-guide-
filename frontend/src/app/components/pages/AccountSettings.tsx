@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Lock, User, Building2, Trash2, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Lock, User, Building2, Trash2, ShieldCheck, ImageUp, Upload } from "lucide-react";
 import InputField from "../ui/InputField";
 import api from "../../../api";
 
@@ -20,19 +20,24 @@ export default function AccountSettings({
   const [isEditingName, setIsEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [savingLogo, setSavingLogo] = useState(false);
   const [formState, setFormState] = useState({
     name: "",
     currentPassword: "",
     password: "",
     confirmPassword: "",
   });
+  const [profileLogoUrl, setProfileLogoUrl] = useState("");
+  const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
   const [nameSuccessMessage, setNameSuccessMessage] = useState("");
   const [passwordSuccessMessage, setPasswordSuccessMessage] = useState("");
+  const [logoSuccessMessage, setLogoSuccessMessage] = useState("");
   const [error, setError] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const isAspirant = userRole === "aspirant";
   const nameLabel = isAspirant ? "Display Name" : "Consultancy Name";
@@ -59,11 +64,32 @@ export default function AccountSettings({
     }
   };
 
+  const getStoredUser = () => {
+    try {
+      const raw = localStorage.getItem("authUser");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
+
   useEffect(() => {
     setFormState((prev) => ({ ...prev, name: getInitialName() }));
   }, [userName]);
 
-  const heroTitle = useMemo(() => (isAspirant ? "Aspirant account" : "Consultancy account"), [isAspirant]);
+  useEffect(() => {
+    const stored = getStoredUser();
+    setProfileLogoUrl(stored?.logo_url || "");
+  }, [userName, userRole]);
+
+  useEffect(() => {
+    return () => {
+      if (profileLogoUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(profileLogoUrl);
+      }
+    };
+  }, [profileLogoUrl]);
+
   const heroHeading = useMemo(() => (isAspirant ? "Manage your Aspirant account" : "Manage your Consultancy account"), [isAspirant]);
 
   function getAuthHeaders() {
@@ -83,36 +109,108 @@ export default function AccountSettings({
     };
   }
 
+  function getMultipartAuthHeaders() {
+    if (typeof window === "undefined") {
+      return {};
+    }
+
+    const token = window.localStorage.getItem("accessToken")
+      || window.localStorage.getItem("access_token")
+      || window.sessionStorage.getItem("accessToken")
+      || window.sessionStorage.getItem("access_token")
+      || "";
+
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
   async function handleSaveName() {
     setError("");
     setNameSuccessMessage("");
 
     if (!formState.name.trim()) {
       setError("Please provide a valid name.");
-      setNameSuccessMessage("");
       return;
     }
 
     setSavingName(true);
     try {
-      const resp = await api.patch("auth/update-profile/", { name: formState.name.trim() }, {
-        headers: getAuthHeaders(),
-      });
+      const resp = await api.patch("auth/update-profile/", { name: formState.name.trim() }, { headers: getAuthHeaders() });
       const updatedUser = resp.data?.user;
       if (updatedUser) {
         const raw = localStorage.getItem("authUser");
         const current = raw ? JSON.parse(raw) : {};
-        const merged = { ...current, ...updatedUser };
-        localStorage.setItem("authUser", JSON.stringify(merged));
+        localStorage.setItem("authUser", JSON.stringify({ ...current, ...updatedUser }));
       }
 
       setNameSuccessMessage("✓ Name changed successfully.");
       setIsEditingName(false);
     } catch (err: any) {
-      const errorMsg = err.response?.data?.detail || err.response?.data?.message || "Failed to update name.";
-      setError(errorMsg);
+      setError(err.response?.data?.detail || err.response?.data?.message || "Failed to update name.");
     } finally {
       setSavingName(false);
+    }
+  }
+
+  async function handleSaveProfilePicture() {
+    setError("");
+    setLogoSuccessMessage("");
+
+    if (!selectedLogoFile) {
+      setError("Please choose a new image first.");
+      return;
+    }
+
+    setSavingLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append("logo", selectedLogoFile);
+
+      const response = await api.put("consultancy/profile-picture/", formData, {
+        headers: getMultipartAuthHeaders(),
+      });
+
+      const updatedUser = response.data?.user || {};
+      const raw = localStorage.getItem("authUser");
+      const current = raw ? JSON.parse(raw) : {};
+      const merged = { ...current, ...updatedUser };
+      localStorage.setItem("authUser", JSON.stringify(merged));
+
+      setProfileLogoUrl(updatedUser.logo_url || response.data?.logo_url || "");
+      setSelectedLogoFile(null);
+      setLogoSuccessMessage("✓ Profile picture updated successfully.");
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.response?.data?.detail || "Failed to update profile picture.");
+    } finally {
+      setSavingLogo(false);
+    }
+  }
+
+  async function handleRemoveProfilePicture() {
+    setError("");
+    setLogoSuccessMessage("");
+
+    setSavingLogo(true);
+    try {
+      const response = await api.delete("consultancy/profile-picture/", {
+        headers: getMultipartAuthHeaders(),
+      });
+
+      const updatedUser = response.data?.user || {};
+      const raw = localStorage.getItem("authUser");
+      const current = raw ? JSON.parse(raw) : {};
+      const merged = { ...current, ...updatedUser, logo_url: null };
+      localStorage.setItem("authUser", JSON.stringify(merged));
+
+      if (profileLogoUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(profileLogoUrl);
+      }
+      setProfileLogoUrl("");
+      setSelectedLogoFile(null);
+      setLogoSuccessMessage("✓ Profile picture removed successfully.");
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.response?.data?.detail || "Failed to remove profile picture.");
+    } finally {
+      setSavingLogo(false);
     }
   }
 
@@ -122,19 +220,16 @@ export default function AccountSettings({
 
     if (!formState.currentPassword) {
       setError("Please enter your current password.");
-      setPasswordSuccessMessage("");
       return;
     }
 
     if (!formState.password) {
       setError("Please enter your new password.");
-      setPasswordSuccessMessage("");
       return;
     }
 
     if (formState.password !== formState.confirmPassword) {
       setError("New passwords do not match.");
-      setPasswordSuccessMessage("");
       return;
     }
 
@@ -150,8 +245,7 @@ export default function AccountSettings({
       setPasswordSuccessMessage("✓ Password updated successfully.");
       setFormState((prev) => ({ ...prev, currentPassword: "", password: "", confirmPassword: "" }));
     } catch (err: any) {
-      const errorMsg = err.response?.data?.detail || err.response?.data?.message || "Failed to update password.";
-      setError(errorMsg);
+      setError(err.response?.data?.detail || err.response?.data?.message || "Failed to update password.");
     } finally {
       setSavingPassword(false);
     }
@@ -160,9 +254,7 @@ export default function AccountSettings({
   async function handleDeleteAccount() {
     setDeleteLoading(true);
     try {
-      await api.delete("auth/delete-account/", {
-        headers: getAuthHeaders(),
-      });
+      await api.delete("auth/delete-account/", { headers: getAuthHeaders() });
       setTimeout(() => {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
@@ -171,8 +263,7 @@ export default function AccountSettings({
         if (onAccountDeleted) onAccountDeleted();
       }, 750);
     } catch (err: any) {
-      const errorMsg = err.response?.data?.detail || err.response?.data?.message || "Failed to delete account.";
-      setError(errorMsg);
+      setError(err.response?.data?.detail || err.response?.data?.message || "Failed to delete account.");
     } finally {
       setDeleteLoading(false);
       setShowDeleteModal(false);
@@ -262,6 +353,103 @@ export default function AccountSettings({
               </div>
             )}
           </section>
+
+          {!isAspirant && (
+            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_8px_32px_-18px_rgba(10,31,68,.18)] sm:p-8">
+              <div className="mb-5">
+                <p className="text-sm font-semibold text-[#0a1f44]">Profile Picture</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Upload a logo that will appear on cards, profile headers, the navbar avatar, and chat views.
+                </p>
+              </div>
+
+              <div className="grid gap-6 lg:grid-cols-[220px_1fr] lg:items-start">
+                <div className="rounded-[1.75rem] border border-dashed border-slate-200 bg-slate-50 p-4">
+                  <div className="flex aspect-square items-center justify-center overflow-hidden rounded-[1.25rem] bg-white shadow-[0_8px_24px_-16px_rgba(10,31,68,.18)]">
+                    {profileLogoUrl ? (
+                      <img
+                        src={profileLogoUrl}
+                        alt="Consultancy profile picture preview"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-slate-400">
+                        <Building2 className="h-12 w-12" />
+                        <span className="text-xs font-medium uppercase tracking-[.2em]">No image yet</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedLogoFile && (
+                    <p className="mt-3 truncate text-xs text-slate-500">Selected: {selectedLogoFile.name}</p>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] || null;
+                      setSelectedLogoFile(file);
+                      setLogoSuccessMessage("");
+
+                      if (profileLogoUrl.startsWith("blob:")) {
+                        URL.revokeObjectURL(profileLogoUrl);
+                      }
+
+                      if (file) {
+                        setProfileLogoUrl(URL.createObjectURL(file));
+                      } else {
+                        const stored = getStoredUser();
+                        setProfileLogoUrl(stored?.logo_url || "");
+                      }
+                    }}
+                  />
+
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-2 rounded-full border border-[#0a1f44] px-4 py-2 text-sm font-semibold text-[#0a1f44] transition-colors hover:bg-[#0a1f44] hover:text-white"
+                    >
+                      <ImageUp className="h-4 w-4" />
+                      Choose New Image
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleSaveProfilePicture}
+                      disabled={savingLogo}
+                      className="inline-flex items-center gap-2 rounded-full bg-[#0a1f44] px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {savingLogo ? "Saving..." : "Save Changes"}
+                    </button>
+
+                    {profileLogoUrl && !profileLogoUrl.startsWith("blob:") && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveProfilePicture}
+                        disabled={savingLogo}
+                        className="inline-flex items-center gap-2 rounded-full border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Remove Image
+                      </button>
+                    )}
+                  </div>
+
+                  {logoSuccessMessage && (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                      {logoSuccessMessage}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
 
           <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_8px_32px_-18px_rgba(10,31,68,.18)] sm:p-8">
             <div className="mb-5">

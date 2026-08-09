@@ -1,21 +1,27 @@
 import json
+import logging
 import os
 import re
 from datetime import date, datetime, time
+from uuid import uuid4
 
 import resend
 from django.conf import settings
-from django.db import IntegrityError
+from django.db import IntegrityError, connection
 from django.contrib.auth import get_user_model
+from django.core.files.storage import default_storage
 from django.contrib.auth.tokens import default_token_generator
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.encoding import force_bytes
+from django.utils.text import get_valid_filename
 from django.utils.http import urlsafe_base64_encode
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import parser_classes
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -50,10 +56,31 @@ except ImportError:
 
 
 UserModel = get_user_model()
+logger = logging.getLogger(__name__)
 STANDARD_TIME_SLOTS = [
     "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
     "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM",
 ]
+
+
+def resolve_logo_url(request, logo_url):
+    if not logo_url:
+        return None
+
+    if isinstance(logo_url, str) and logo_url.startswith(('http://', 'https://')):
+        return logo_url
+
+    if request is not None and isinstance(logo_url, str) and logo_url.startswith('/'):
+        return request.build_absolute_uri(logo_url)
+
+    return logo_url
+
+
+def has_user_logo_column():
+    table_name = UserModel._meta.db_table
+    with connection.cursor() as cursor:
+        columns = [column.name for column in connection.introspection.get_table_description(cursor, table_name)]
+    return 'logo_url' in columns
 
 
 def format_booking_time(value):
@@ -345,7 +372,7 @@ def bookings(request):
         return Response({'detail': 'consultancy_id, appointment_date, and appointment_time are required.'}, status=400)
 
     try:
-        consultancy = UserModel.objects.get(pk=int(consultancy_id), role='consultancy')
+        consultancy = UserModel.objects.get(pk=int(consultancy_id), role='consultancy', is_active=True)
     except (UserModel.DoesNotExist, ValueError, TypeError):
         return Response({'detail': 'Consultancy not found.'}, status=404)
 
@@ -619,6 +646,7 @@ def consultancy_signup(request):
                 'username': user.username,
                 'email': user.email,
                 'office_name': user.office_name,
+                'logo_url': resolve_logo_url(request, user.logo_url),
                 'role': user.role,
                 'display_name': display_name,
                 'full_name': display_name,
@@ -634,13 +662,17 @@ def get_all_consultancies(request):
         return JsonResponse({'detail': 'Method not allowed.'}, status=405)
 
     consultancies = list(
-        UserModel.objects.filter(role='consultancy').values(
+        UserModel.objects.filter(role='consultancy', is_active=True).values(
             'id',
             'username',
             'email',
             'office_name',
+            'logo_url',
         )
     )
+
+    for consultancy in consultancies:
+        consultancy['logo_url'] = resolve_logo_url(request, consultancy.get('logo_url'))
 
     return JsonResponse(consultancies, safe=False, status=200)
 
@@ -743,9 +775,13 @@ def users_list(request):
         'is_verified',
         'license_number',
         'office_name',
+        'logo_url',
         'date_joined',
         'last_login',
     ))
+
+    for user in users:
+        user['logo_url'] = resolve_logo_url(request, user.get('logo_url'))
 
     return JsonResponse(users, safe=False, status=200)
 
@@ -1136,9 +1172,93 @@ class UpdateProfileView(APIView):
         return Response(
             {
                 'detail': 'Profile updated successfully.',
-                'user': UserSerializer(user).data,
+                'user': UserSerializer(user, context={'request': request}).data,
             },
             status=status.HTTP_200_OK,
+        )
+
+
+@api_view(['PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def consultancy_profile_picture(request):
+    user = request.user
+
+    if getattr(user, 'role', None) != 'consultancy':
+        return Response({'detail': 'Only consultancy accounts can update profile pictures.'}, status=403)
+
+    def delete_current_logo_file():
+        current_logo = getattr(user, 'logo_url', None)
+        if not current_logo:
+            return
+
+        storage_path = current_logo
+        if isinstance(storage_path, str) and storage_path.startswith(settings.MEDIA_URL):
+            storage_path = storage_path[len(settings.MEDIA_URL):]
+        if isinstance(storage_path, str) and storage_path.startswith('/'):
+            storage_path = storage_path.lstrip('/')
+
+        if storage_path and default_storage.exists(storage_path):
+            default_storage.delete(storage_path)
+
+    try:
+        if request.method == 'DELETE':
+            delete_current_logo_file()
+            user.logo_url = None
+            user.save(update_fields=['logo_url'])
+
+            return Response(
+                {
+                    'detail': 'Profile picture removed successfully.',
+                    'logo_url': None,
+                    'user': UserSerializer(user, context={'request': request}).data,
+                },
+                status=200,
+            )
+
+        if not has_user_logo_column():
+            return Response(
+                {
+                    'message': 'Database schema is missing logo_url column. Run migrations before uploading profile pictures.',
+                },
+                status=500,
+            )
+
+        uploaded_file = request.FILES.get('logo') or request.FILES.get('profile_picture') or request.FILES.get('image')
+        if uploaded_file is None:
+            return Response({'message': 'No file provided'}, status=400)
+
+        content_type = getattr(uploaded_file, 'content_type', '') or ''
+        if not content_type.startswith('image/'):
+            return Response({'detail': 'Only image files are allowed.'}, status=400)
+
+        upload_directory = os.path.join(settings.MEDIA_ROOT, 'consultancy-logos', str(user.id))
+        os.makedirs(upload_directory, exist_ok=True)
+
+        original_name = get_valid_filename(uploaded_file.name or 'profile-picture')
+        file_extension = os.path.splitext(original_name)[1] or '.png'
+        storage_path = f'consultancy-logos/{user.id}/{uuid4().hex}{file_extension}'
+        saved_path = default_storage.save(storage_path, uploaded_file)
+
+        delete_current_logo_file()
+        user.logo_url = default_storage.url(saved_path)
+        user.save(update_fields=['logo_url'])
+
+        return Response(
+            {
+                'detail': 'Profile picture updated successfully.',
+                'logo_url': resolve_logo_url(request, user.logo_url),
+                'user': UserSerializer(user, context={'request': request}).data,
+            },
+            status=200,
+        )
+    except Exception as exc:
+        logger.exception('Profile picture upload failed for user_id=%s', getattr(user, 'id', None))
+        return Response(
+            {
+                'message': str(exc),
+            },
+            status=500,
         )
 
 
@@ -1169,25 +1289,7 @@ class DeleteAccountView(APIView):
                 )
 
         try:
-            user.is_active = False
-            user.is_verified = False
-            user.first_name = ''
-            user.last_name = ''
-            user.office_name = ''
-            user.username = f"deleted_user_{user.id}"
-            user.email = f"deleted_user_{user.id}@example.invalid"
-            user.set_unusable_password()
-            user.save(update_fields=[
-                'is_active',
-                'is_verified',
-                'first_name',
-                'last_name',
-                'office_name',
-                'username',
-                'email',
-                'password',
-            ])
-
+            user.delete()
             return Response(
                 {'detail': 'Account deleted successfully.'},
                 status=status.HTTP_200_OK,

@@ -3,8 +3,6 @@ import { Building2, Search, Loader2, AlertCircle, Mail, MapPin } from "lucide-re
 import { useNavigate } from "react-router-dom";
 import API from "../../../api";
 import ConsultancyCard from "./ConsultancyCard";
-import studyAsiaLogo from "../../../assets/studyAsia.png";
-import nextStepLogo from "../../../assets/NextStepconsult.png";
 
 
 type Consultancy = {
@@ -12,6 +10,7 @@ type Consultancy = {
   username: string;
   email: string;
   office_name: string | null;
+  logo_url: string | null;
 };
 
 function cleanDisplayName(value: string | null | undefined) {
@@ -157,16 +156,6 @@ export default function ConsultancyBrowseGrid() {
                 {filteredConsultancies.map((consultancy) => {
                   const displayName = cleanDisplayName(consultancy.office_name || consultancy.username);
                   const fallbackName = displayName || cleanDisplayName(consultancy.username) || "Consultancy";
-                  
-                  const name = fallbackName.toLowerCase();
-
-                const logo =
-                 name.includes("study asia")
-                ? studyAsiaLogo
-                : name.includes("next step")
-                ? nextStepLogo
-                  : undefined;
-                  console.log("Consultancy name:", fallbackName);
 
 
                   return (
@@ -176,7 +165,7 @@ export default function ConsultancyBrowseGrid() {
                       username={consultancy.username}
                       email={consultancy.email}
                       officeName={consultancy.office_name}
-                      logo={logo}
+                      logoUrl={consultancy.logo_url}
                       onClick={() => navigate(`/consultancies/${consultancy.id}`)}
                     />
                   );
